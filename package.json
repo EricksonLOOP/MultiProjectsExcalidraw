@@ -7,7 +7,8 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "dist": "electron-builder"
+    "icons": "node scripts/generate-icons.mjs",
+    "dist": "electron-vite build && electron-builder"
   },
   "dependencies": {
     "@electron-toolkit/utils": "^4.0.0",
@@ -28,6 +29,7 @@
     "electron-builder": "^24.13.3",
     "electron-vite": "^2.3.0",
     "playwright-core": "^1.60.0",
+    "png-to-ico": "^3.0.1",
     "postcss": "^8.5.15",
     "tailwindcss": "^3.4.19",
     "typescript": "^5.5.2",
@@ -36,11 +38,16 @@
   "build": {
     "appId": "com.multiprojects.excalidraw",
     "productName": "MultiProjects Excalidraw",
+    "icon": "resources/icon.ico",
     "directories": {
       "output": "dist"
     },
+    "extraResources": [
+      { "from": "resources", "to": "resources" }
+    ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "resources/icon.ico"
     }
   }
 }

@@ -3,6 +3,16 @@ import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import fs from 'fs'
 
+function getIconPath(): string {
+  // Em dev: __dirname = out/main → sobe 2 níveis até a raiz do projeto
+  // Em prod (packaged): extraResources copia resources/ para junto do app
+  const candidates = [
+    join(__dirname, '../../resources/icon.png'),
+    join(process.resourcesPath ?? '', 'resources/icon.png')
+  ]
+  return candidates.find((p) => fs.existsSync(p)) ?? candidates[0]
+}
+
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
     width: 1280,
@@ -11,6 +21,7 @@ function createWindow(): void {
     minHeight: 600,
     show: false,
     autoHideMenuBar: true,
+    icon: getIconPath(),
     titleBarStyle: 'hidden',
     titleBarOverlay: {
       color: '#1e1e2e',
