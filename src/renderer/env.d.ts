@@ -18,3 +18,26 @@ interface ProjectFile {
   path: string
   modifiedAt: number
 }
+
+interface WebIntegration {
+  id: string
+  name: string
+  url: string
+  description: string
+  color: string
+}
+
+// Electron webview JSX element
+declare namespace JSX {
+  interface IntrinsicElements {
+    webview: React.DetailedHTMLProps<
+      React.HTMLAttributes<HTMLElement> & {
+        src?: string
+        allowpopups?: string
+        partition?: string
+        useragent?: string
+      },
+      HTMLElement
+    >
+  }
+}

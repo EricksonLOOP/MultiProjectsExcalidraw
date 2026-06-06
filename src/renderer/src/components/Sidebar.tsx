@@ -81,7 +81,7 @@ export default function Sidebar({
   return (
     <div
       className="flex flex-col h-full bg-card border-r border-border"
-      style={{ width: 260, minWidth: 260, paddingTop: 'var(--titlebar-height)' }}
+      style={{ width: 260, minWidth: 260 }}
     >
       {/* Cabeçalho da pasta */}
       <div className="px-3 py-2 border-b border-border space-y-0.5">

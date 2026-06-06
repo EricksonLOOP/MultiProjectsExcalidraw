@@ -26,6 +26,7 @@
     --ring: 217 92% 76%;
     --radius: 0.5rem;
     --titlebar-height: 36px;
+    --navbar-height: 44px;
   }
 
   * {
