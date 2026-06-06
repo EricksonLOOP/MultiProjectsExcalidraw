@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { PenLine, Music, Plus, Globe, Trash2, X } from 'lucide-react'
+import { PenLine, Plus, Globe, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -12,7 +12,7 @@ const DEFAULT_INTEGRATIONS: WebIntegration[] = [
     name: 'Spotify',
     url: 'https://open.spotify.com',
     description: 'Música enquanto trabalha',
-    color: 'from-green-500/20 to-emerald-600/10 border-green-500/20',
+    color: '',
   }
 ]
 
@@ -45,13 +45,7 @@ export default function Dashboard({ onOpenExcalidraw, onOpenWeb }: Props) {
     let url = form.url.trim()
     if (!name || !url) { setError('Preencha nome e URL.'); return }
     if (!url.startsWith('http')) url = 'https://' + url
-    const next = [...integrations, {
-      id: crypto.randomUUID(),
-      name,
-      url,
-      description: url,
-      color: 'from-blue-500/20 to-cyan-600/10 border-blue-500/20'
-    }]
+    const next = [...integrations, { id: crypto.randomUUID(), name, url, description: url, color: '' }]
     setIntegrations(next)
     saveIntegrations(next)
     setForm({ name: '', url: '' })
@@ -72,26 +66,30 @@ export default function Dashboard({ onOpenExcalidraw, onOpenWeb }: Props) {
       style={{ paddingTop: 'var(--titlebar-height)' }}
     >
       <div className="max-w-3xl w-full mx-auto px-8 py-10">
+
         {/* Header */}
         <div className="mb-10">
-          <h1 className="text-3xl font-bold text-foreground">Devson</h1>
+          <h1 className="text-3xl font-bold tracking-tight">
+            <span className="text-primary">Dev</span>
+            <span className="text-foreground">son</span>
+          </h1>
           <p className="text-muted-foreground mt-1 text-sm">Suas ferramentas em um só lugar</p>
         </div>
 
-        {/* Grid de ferramentas */}
+        {/* Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
 
-          {/* Excalidraw — nativo */}
+          {/* Excalidraw — card primário com verde */}
           <button
             onClick={onOpenExcalidraw}
             className={cn(
-              'group relative flex flex-col gap-3 p-5 rounded-xl border text-left transition-all',
-              'bg-gradient-to-br from-violet-500/20 to-indigo-600/10 border-violet-500/20',
-              'hover:border-violet-500/40 hover:scale-[1.02] hover:shadow-lg hover:shadow-violet-500/10'
+              'group relative flex flex-col gap-3 p-5 rounded-xl border text-left transition-all duration-200',
+              'bg-card border-primary/30',
+              'hover:border-primary hover:shadow-lg hover:shadow-primary/10 hover:scale-[1.02]'
             )}
           >
-            <div className="flex items-center justify-center size-11 rounded-lg bg-violet-500/20">
-              <PenLine className="size-5 text-violet-400" />
+            <div className="flex items-center justify-center size-11 rounded-lg bg-primary/10 border border-primary/20">
+              <PenLine className="size-5 text-primary" />
             </div>
             <div>
               <p className="font-semibold text-sm text-foreground">Excalidraw</p>
@@ -105,21 +103,19 @@ export default function Dashboard({ onOpenExcalidraw, onOpenWeb }: Props) {
               key={integration.id}
               onClick={() => onOpenWeb(integration)}
               className={cn(
-                'group relative flex flex-col gap-3 p-5 rounded-xl border text-left transition-all',
-                `bg-gradient-to-br ${integration.color}`,
-                'hover:scale-[1.02] hover:shadow-lg'
+                'group relative flex flex-col gap-3 p-5 rounded-xl border text-left transition-all duration-200',
+                'bg-card border-border',
+                'hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 hover:scale-[1.02]'
               )}
             >
-              {/* Remover */}
               <button
                 onClick={(e) => handleRemove(integration.id, e)}
-                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-destructive/20 text-muted-foreground hover:text-destructive"
+                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md text-muted-foreground hover:text-destructive"
               >
                 <Trash2 className="size-3" />
               </button>
-
-              <div className="flex items-center justify-center size-11 rounded-lg bg-white/10">
-                <Globe className="size-5 text-foreground/70" />
+              <div className="flex items-center justify-center size-11 rounded-lg bg-secondary border border-border">
+                <Globe className="size-5 text-muted-foreground group-hover:text-primary transition-colors" />
               </div>
               <div>
                 <p className="font-semibold text-sm text-foreground">{integration.name}</p>
@@ -128,13 +124,14 @@ export default function Dashboard({ onOpenExcalidraw, onOpenWeb }: Props) {
             </button>
           ))}
 
-          {/* Adicionar integração */}
+          {/* Adicionar */}
           {!adding ? (
             <button
               onClick={() => setAdding(true)}
               className={cn(
-                'flex flex-col items-center justify-center gap-2 p-5 rounded-xl border text-left transition-all',
-                'border-dashed border-border hover:border-primary/50 hover:bg-primary/5'
+                'flex flex-col items-center justify-center gap-2 p-5 rounded-xl border transition-all duration-200',
+                'border-dashed border-border',
+                'hover:border-primary/50 hover:bg-primary/5'
               )}
             >
               <div className="flex items-center justify-center size-11 rounded-lg bg-secondary">
@@ -146,25 +143,19 @@ export default function Dashboard({ onOpenExcalidraw, onOpenWeb }: Props) {
             <div className="flex flex-col gap-2 p-4 rounded-xl border border-primary/30 bg-card col-span-2 sm:col-span-1">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium text-foreground flex items-center gap-1.5">
-                  <Globe className="size-3.5" /> Nova ferramenta
+                  <Globe className="size-3.5 text-primary" /> Nova ferramenta
                 </span>
                 <button onClick={() => { setAdding(false); setError('') }}>
-                  <X className="size-3.5 text-muted-foreground" />
+                  <X className="size-3.5 text-muted-foreground hover:text-foreground" />
                 </button>
               </div>
-              <Input
-                placeholder="Nome (ex: Notion)"
-                value={form.name}
+              <Input placeholder="Nome (ex: Notion)" value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                className="h-8 text-xs"
-              />
-              <Input
-                placeholder="URL (ex: notion.so)"
-                value={form.url}
+                className="h-8 text-xs" />
+              <Input placeholder="URL (ex: notion.so)" value={form.url}
                 onChange={e => setForm(f => ({ ...f, url: e.target.value }))}
                 onKeyDown={e => e.key === 'Enter' && handleAdd()}
-                className="h-8 text-xs"
-              />
+                className="h-8 text-xs" />
               {error && <p className="text-xs text-destructive">{error}</p>}
               <div className="flex gap-2 mt-1">
                 <Button size="sm" onClick={handleAdd} className="flex-1 h-7 text-xs">Adicionar</Button>

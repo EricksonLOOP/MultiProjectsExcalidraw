@@ -29,8 +29,8 @@ function createWindow(): void {
     icon: getIconPath(),
     titleBarStyle: 'hidden',
     titleBarOverlay: {
-      color: '#1e1e2e',
-      symbolColor: '#cdd6f4',
+      color: '#0d0d0d',
+      symbolColor: '#ffffff',
       height: 36
     },
     webPreferences: {
