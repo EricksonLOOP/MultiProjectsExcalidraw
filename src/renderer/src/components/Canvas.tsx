@@ -78,11 +78,11 @@ export default function Canvas({ project }: Props) {
     lastVersionRef.current = version
 
     isDirtyRef.current = true
-    setSaveStatus('pending')
     if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(async () => {
       if (!apiRef.current) return
+      setSaveStatus('pending')
       const elements = apiRef.current.getSceneElements()
       const appState = apiRef.current.getAppState()
       const files = apiRef.current.getFiles()
