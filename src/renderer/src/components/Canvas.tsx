@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
-import { Excalidraw } from '@excalidraw/excalidraw'
+import { Excalidraw, getSceneVersion } from '@excalidraw/excalidraw'
 import { Loader2, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { ExcalidrawImperativeAPI, AppState } from '@excalidraw/excalidraw/types/types'
@@ -26,11 +26,13 @@ export default function Canvas({ project }: Props) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isDirtyRef = useRef(false)
+  const lastVersionRef = useRef<number>(-1)
 
   useEffect(() => {
     let cancelled = false
     setLoading(true)
     setSaveStatus('idle')
+    lastVersionRef.current = -1
     window.api.readProject(project.path).then((raw) => {
       if (cancelled) return
       if (raw) {
@@ -70,7 +72,11 @@ export default function Canvas({ project }: Props) {
     }
   }, [project.path])
 
-  const scheduleSave = useCallback(() => {
+  const scheduleSave = useCallback((elements: readonly ExcalidrawElement[]) => {
+    const version = getSceneVersion(elements)
+    if (version === lastVersionRef.current) return
+    lastVersionRef.current = version
+
     isDirtyRef.current = true
     setSaveStatus('pending')
     if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
