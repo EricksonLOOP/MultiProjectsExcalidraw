@@ -4,13 +4,18 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import fs from 'fs'
 
 function getIconPath(): string {
-  // Em dev: __dirname = out/main → sobe 2 níveis até a raiz do projeto
-  // Em prod (packaged): extraResources copia resources/ para junto do app
-  const candidates = [
-    join(__dirname, '../../resources/icon.png'),
-    join(process.resourcesPath ?? '', 'resources/icon.png')
+  const names = ['icon.png', 'icon.ico']
+  const bases = [
+    join(__dirname, '../../resources'),
+    join(process.resourcesPath ?? '', 'resources')
   ]
-  return candidates.find((p) => fs.existsSync(p)) ?? candidates[0]
+  for (const base of bases) {
+    for (const name of names) {
+      const p = join(base, name)
+      if (fs.existsSync(p)) return p
+    }
+  }
+  return join(__dirname, '../../resources/icon.ico')
 }
 
 function createWindow(): void {
@@ -52,7 +57,7 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-  electronApp.setAppUserModelId('com.multiprojects.excalidraw')
+  electronApp.setAppUserModelId('com.devson.app')
 
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
@@ -120,7 +125,7 @@ function registerIpcHandlers(): void {
     const empty = JSON.stringify({
       type: 'excalidraw',
       version: 2,
-      source: 'multi-projects-excalidraw',
+      source: 'devson',
       elements: [],
       appState: { viewBackgroundColor: '#ffffff', gridSize: null },
       files: {}

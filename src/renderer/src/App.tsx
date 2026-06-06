@@ -7,7 +7,7 @@ import Sidebar from './components/Sidebar'
 import Canvas from './components/Canvas'
 import WebPanel from './components/WebPanel'
 
-const FOLDER_KEY = 'excalidraw-projects-folder'
+const FOLDER_KEY = 'devson-excalidraw-folder'
 
 type View =
   | { type: 'home' }

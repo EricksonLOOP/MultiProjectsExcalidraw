@@ -74,7 +74,7 @@ export default function Dashboard({ onOpenExcalidraw, onOpenWeb }: Props) {
       <div className="max-w-3xl w-full mx-auto px-8 py-10">
         {/* Header */}
         <div className="mb-10">
-          <h1 className="text-3xl font-bold text-foreground">Meu Hub</h1>
+          <h1 className="text-3xl font-bold text-foreground">Devson</h1>
           <p className="text-muted-foreground mt-1 text-sm">Suas ferramentas em um só lugar</p>
         </div>
 

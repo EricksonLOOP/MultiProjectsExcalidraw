@@ -1,25 +1,19 @@
-# MultiProjects Excalidraw
+# Devson `<D./>`
 
-App desktop para gerenciar múltiplos projetos [Excalidraw](https://excalidraw.com/) salvos como arquivos `.excalidraw` no seu computador.
-
-## O problema que resolve
-
-No Excalidraw normal tudo fica em um único canvas. Este app permite criar projetos separados, alternar entre eles e salvar tudo em arquivos reais no seu PC — compatíveis com o Excalidraw original.
+Hub de ferramentas para desenvolvedores — desktop app que centraliza suas ferramentas de trabalho em um só lugar.
 
 ## Funcionalidades
 
-- Criar múltiplos projetos (arquivos `.excalidraw`)
-- Alternar entre projetos pela sidebar
-- Auto-save automático (1 segundo após editar)
-- Renomear e deletar projetos (clique direito)
-- Escolher qualquer pasta do PC para guardar os projetos
-- Arquivos compatíveis com o Excalidraw original
+- **Excalidraw** — gerenciamento de múltiplos projetos de diagramas salvos como arquivos `.excalidraw` no PC
+- **Spotify** — web player embutido
+- **Extensível** — adicione qualquer ferramenta web (Notion, GitHub, ChatGPT…) como um painel
 
 ## Tecnologias
 
 - [Electron](https://www.electronjs.org/) + [electron-vite](https://electron-vite.org/)
 - [React](https://react.dev/) + TypeScript
-- [@excalidraw/excalidraw](https://www.npmjs.com/package/@excalidraw/excalidraw)
+- [Tailwind CSS](https://tailwindcss.com/) + [shadcn/ui](https://ui.shadcn.com/)
+- [Lucide](https://lucide.dev/) + [@excalidraw/excalidraw](https://www.npmjs.com/package/@excalidraw/excalidraw)
 
 ## Desenvolvimento
 
@@ -28,16 +22,16 @@ npm install
 npm run dev
 ```
 
-## Build
+## Ícone
+
+Coloque `icon.png` (512×512) em `resources/` e rode:
 
 ```bash
-npm run build
+npm run icons   # gera resources/icon.ico
 ```
 
-## Empacotar para distribuição
+## Build / Distribuição
 
 ```bash
-npm run dist
+npm run dist    # gera instalador .exe em dist/
 ```
-
-Gera o instalador em `dist/`.

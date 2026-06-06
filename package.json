@@ -1,7 +1,7 @@
 {
-  "name": "multi-projects-excalidraw",
+  "name": "devson",
   "version": "1.0.0",
-  "description": "Gerenciador de múltiplos projetos Excalidraw",
+  "description": "Hub de ferramentas para desenvolvedores",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
@@ -36,8 +36,8 @@
     "vite": "^5.3.1"
   },
   "build": {
-    "appId": "com.multiprojects.excalidraw",
-    "productName": "MultiProjects Excalidraw",
+    "appId": "com.devson.app",
+    "productName": "Devson",
     "icon": "resources/icon.ico",
     "directories": {
       "output": "dist"

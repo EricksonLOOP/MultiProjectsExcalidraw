@@ -61,7 +61,7 @@ export default function Canvas({ project }: Props) {
           const appState = apiRef.current.getAppState()
           const files = apiRef.current.getFiles()
           const payload = JSON.stringify({
-            type: 'excalidraw', version: 2, source: 'multi-projects-excalidraw',
+            type: 'excalidraw', version: 2, source: 'devson',
             elements: scene,
             appState: { viewBackgroundColor: appState.viewBackgroundColor, gridSize: appState.gridSize },
             files
@@ -87,7 +87,7 @@ export default function Canvas({ project }: Props) {
       const appState = apiRef.current.getAppState()
       const files = apiRef.current.getFiles()
       const payload = JSON.stringify({
-        type: 'excalidraw', version: 2, source: 'multi-projects-excalidraw',
+        type: 'excalidraw', version: 2, source: 'devson',
         elements,
         appState: { viewBackgroundColor: appState.viewBackgroundColor, gridSize: appState.gridSize },
         files
