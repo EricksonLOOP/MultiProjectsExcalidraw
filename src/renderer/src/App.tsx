@@ -1,4 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
+import { FolderOpen } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import Sidebar from './components/Sidebar'
 import Canvas from './components/Canvas'
 
@@ -61,40 +63,23 @@ export default function App() {
 
   if (!folderPath) {
     return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100%',
-        gap: '16px',
-        background: 'var(--bg)'
-      }}>
-        <h1 style={{ fontSize: '24px', color: 'var(--text)', fontWeight: 600 }}>
+      <div className="flex flex-col items-center justify-center h-full gap-4 bg-background">
+        <h1 className="text-2xl font-semibold text-foreground">
           MultiProjects Excalidraw
         </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '15px' }}>
+        <p className="text-sm text-muted-foreground">
           Escolha uma pasta para armazenar seus projetos
         </p>
-        <button
-          onClick={handleSelectFolder}
-          style={{
-            background: 'var(--accent)',
-            color: '#1e1e2e',
-            padding: '10px 24px',
-            borderRadius: '8px',
-            fontSize: '15px',
-            fontWeight: 600
-          }}
-        >
+        <Button onClick={handleSelectFolder}>
+          <FolderOpen />
           Escolher pasta
-        </button>
+        </Button>
       </div>
     )
   }
 
   return (
-    <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+    <div className="flex h-full overflow-hidden">
       <Sidebar
         folderPath={folderPath}
         projects={projects}
@@ -105,18 +90,11 @@ export default function App() {
         onProjectRenamed={handleProjectRenamed}
         onChangeFolder={handleSelectFolder}
       />
-      <div style={{ flex: 1, overflow: 'hidden' }}>
+      <div className="flex-1 overflow-hidden">
         {activeProject ? (
           <Canvas key={activeProject.path} project={activeProject} />
         ) : (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: '100%',
-            color: 'var(--text-muted)',
-            fontSize: '15px'
-          }}>
+          <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
             Nenhum projeto aberto. Crie um novo na barra lateral.
           </div>
         )}

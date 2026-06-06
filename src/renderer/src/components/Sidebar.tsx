@@ -1,4 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
+import { FolderOpen, FileText, Plus, X, Pencil, Trash2, FolderSync } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { cn } from '@/lib/utils'
 
 interface Props {
   folderPath: string
@@ -48,10 +52,7 @@ export default function Sidebar({
     const name = newName.trim()
     if (!name) return
     const result = await window.api.createProject(folderPath, name)
-    if (result.error) {
-      setError(result.error)
-      return
-    }
+    if (result.error) { setError(result.error); return }
     setCreating(false)
     setNewName('')
     setError(null)
@@ -60,15 +61,9 @@ export default function Sidebar({
 
   const handleRename = async (project: ProjectFile) => {
     const name = renameName.trim()
-    if (!name || name === project.name) {
-      setRenamingPath(null)
-      return
-    }
+    if (!name || name === project.name) { setRenamingPath(null); return }
     const result = await window.api.renameProject(project.path, folderPath, name)
-    if (result.error) {
-      setError(result.error)
-      return
-    }
+    if (result.error) { setError(result.error); return }
     setRenamingPath(null)
     setError(null)
     onProjectRenamed(project.path, { name, path: result.path!, modifiedAt: Date.now() })
@@ -84,59 +79,31 @@ export default function Sidebar({
   const folderName = folderPath.split(/[\\/]/).pop() ?? folderPath
 
   return (
-    <div style={{
-      width: 'var(--sidebar-width)',
-      minWidth: 'var(--sidebar-width)',
-      background: 'var(--bg-surface)',
-      borderRight: '1px solid var(--border)',
-      display: 'flex',
-      flexDirection: 'column',
-      height: '100%',
-      paddingTop: 'var(--titlebar-height)'
-    }}>
+    <div
+      className="flex flex-col h-full bg-card border-r border-border"
+      style={{ width: 260, minWidth: 260, paddingTop: 'var(--titlebar-height)' }}
+    >
       {/* Cabeçalho da pasta */}
-      <div style={{
-        padding: '12px 12px 8px',
-        borderBottom: '1px solid var(--border)'
-      }}>
+      <div className="px-3 py-2 border-b border-border space-y-0.5">
         <button
           onClick={() => window.api.openFolder(folderPath)}
           title={folderPath}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            width: '100%',
-            padding: '6px 8px',
-            borderRadius: '6px',
-            color: 'var(--text-muted)',
-            fontSize: '12px',
-            textAlign: 'left',
-            overflow: 'hidden',
-            whiteSpace: 'nowrap',
-            textOverflow: 'ellipsis'
-          }}
+          className="flex items-center gap-2 w-full px-2 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors truncate"
         >
-          <span style={{ flexShrink: 0 }}>📁</span>
-          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{folderName}</span>
+          <FolderOpen className="size-3.5 shrink-0 text-primary" />
+          <span className="truncate">{folderName}</span>
         </button>
         <button
           onClick={onChangeFolder}
-          style={{
-            width: '100%',
-            padding: '4px 8px',
-            borderRadius: '6px',
-            color: 'var(--text-muted)',
-            fontSize: '11px',
-            textAlign: 'left'
-          }}
+          className="flex items-center gap-2 w-full px-2 py-1 rounded-md text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
         >
+          <FolderSync className="size-3 shrink-0" />
           Trocar pasta
         </button>
       </div>
 
       {/* Lista de projetos */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+      <div className="flex-1 overflow-y-auto py-2">
         {projects.map((p) => (
           <div
             key={p.path}
@@ -146,8 +113,8 @@ export default function Sidebar({
             }}
           >
             {renamingPath === p.path ? (
-              <div style={{ padding: '2px 12px' }}>
-                <input
+              <div className="px-3 py-1">
+                <Input
                   ref={renameInputRef}
                   value={renameName}
                   onChange={(e) => setRenameName(e.target.value)}
@@ -156,63 +123,28 @@ export default function Sidebar({
                     if (e.key === 'Enter') handleRename(p)
                     if (e.key === 'Escape') setRenamingPath(null)
                   }}
-                  style={{
-                    width: '100%',
-                    background: 'var(--bg-hover)',
-                    border: '1px solid var(--accent)',
-                    borderRadius: '4px',
-                    padding: '4px 8px',
-                    outline: 'none',
-                    fontSize: '13px',
-                    color: 'var(--text)'
-                  }}
+                  className="h-7 text-xs"
                 />
               </div>
             ) : (
               <button
                 onClick={() => onSelectProject(p)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  width: '100%',
-                  padding: '7px 16px',
-                  textAlign: 'left',
-                  fontSize: '13px',
-                  color: activeProject?.path === p.path ? 'var(--accent)' : 'var(--text)',
-                  background: activeProject?.path === p.path ? 'var(--bg-hover)' : 'transparent',
-                  borderLeft: activeProject?.path === p.path
-                    ? '2px solid var(--accent)'
-                    : '2px solid transparent',
-                  transition: 'background 0.1s'
-                }}
-                onMouseEnter={(e) => {
-                  if (activeProject?.path !== p.path)
-                    (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)'
-                }}
-                onMouseLeave={(e) => {
-                  if (activeProject?.path !== p.path)
-                    (e.currentTarget as HTMLElement).style.background = 'transparent'
-                }}
+                className={cn(
+                  'flex items-center gap-2 w-full px-4 py-1.5 text-left text-sm transition-colors border-l-2',
+                  activeProject?.path === p.path
+                    ? 'border-primary bg-accent text-primary'
+                    : 'border-transparent text-foreground hover:bg-accent/50'
+                )}
               >
-                <span style={{ fontSize: '14px' }}>✏️</span>
-                <span style={{
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap'
-                }}>{p.name}</span>
+                <FileText className="size-3.5 shrink-0 text-muted-foreground" />
+                <span className="truncate">{p.name}</span>
               </button>
             )}
           </div>
         ))}
 
         {projects.length === 0 && !creating && (
-          <p style={{
-            padding: '16px',
-            color: 'var(--text-muted)',
-            fontSize: '12px',
-            textAlign: 'center'
-          }}>
+          <p className="px-4 py-4 text-xs text-muted-foreground text-center">
             Nenhum projeto ainda.<br />Crie um novo abaixo.
           </p>
         )}
@@ -220,21 +152,18 @@ export default function Sidebar({
 
       {/* Erro */}
       {error && (
-        <div style={{
-          padding: '8px 12px',
-          color: 'var(--danger)',
-          fontSize: '12px',
-          borderTop: '1px solid var(--border)'
-        }}>
-          {error}
-          <button onClick={() => setError(null)} style={{ marginLeft: '8px', color: 'var(--text-muted)' }}>×</button>
+        <div className="flex items-center gap-2 px-3 py-2 border-t border-border text-xs text-destructive">
+          <span className="flex-1">{error}</span>
+          <button onClick={() => setError(null)} className="text-muted-foreground hover:text-foreground">
+            <X className="size-3.5" />
+          </button>
         </div>
       )}
 
       {/* Input de novo projeto */}
       {creating && (
-        <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)' }}>
-          <input
+        <div className="px-3 py-2 border-t border-border space-y-2">
+          <Input
             ref={newInputRef}
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
@@ -243,88 +172,39 @@ export default function Sidebar({
               if (e.key === 'Enter') handleCreate()
               if (e.key === 'Escape') { setCreating(false); setNewName('') }
             }}
-            style={{
-              width: '100%',
-              background: 'var(--bg-hover)',
-              border: '1px solid var(--accent)',
-              borderRadius: '6px',
-              padding: '6px 10px',
-              outline: 'none',
-              fontSize: '13px',
-              color: 'var(--text)'
-            }}
+            className="h-8 text-xs"
           />
-          <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
-            <button
-              onClick={handleCreate}
-              style={{
-                flex: 1,
-                background: 'var(--accent)',
-                color: '#1e1e2e',
-                padding: '5px',
-                borderRadius: '6px',
-                fontSize: '12px',
-                fontWeight: 600
-              }}
-            >
+          <div className="flex gap-2">
+            <Button size="sm" onClick={handleCreate} className="flex-1 h-7 text-xs">
               Criar
-            </button>
-            <button
+            </Button>
+            <Button
+              size="sm"
+              variant="secondary"
               onClick={() => { setCreating(false); setNewName('') }}
-              style={{
-                flex: 1,
-                background: 'var(--bg-hover)',
-                padding: '5px',
-                borderRadius: '6px',
-                fontSize: '12px',
-                color: 'var(--text-muted)'
-              }}
+              className="flex-1 h-7 text-xs"
             >
               Cancelar
-            </button>
+            </Button>
           </div>
         </div>
       )}
 
       {/* Botão novo projeto */}
       {!creating && (
-        <div style={{ padding: '8px 12px', borderTop: '1px solid var(--border)' }}>
-          <button
-            onClick={() => setCreating(true)}
-            style={{
-              width: '100%',
-              background: 'var(--accent)',
-              color: '#1e1e2e',
-              padding: '8px',
-              borderRadius: '8px',
-              fontSize: '13px',
-              fontWeight: 600,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px'
-            }}
-          >
-            + Novo projeto
-          </button>
+        <div className="p-3 border-t border-border">
+          <Button onClick={() => setCreating(true)} className="w-full">
+            <Plus />
+            Novo projeto
+          </Button>
         </div>
       )}
 
       {/* Context menu */}
       {contextMenu && (
         <div
-          style={{
-            position: 'fixed',
-            top: contextMenu.y,
-            left: contextMenu.x,
-            background: 'var(--bg-hover)',
-            border: '1px solid var(--border)',
-            borderRadius: '8px',
-            padding: '4px',
-            zIndex: 1000,
-            minWidth: '140px',
-            boxShadow: '0 8px 24px rgba(0,0,0,0.4)'
-          }}
+          className="fixed z-50 min-w-[140px] overflow-hidden rounded-lg border border-border bg-popover p-1 shadow-lg"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
           onClick={(e) => e.stopPropagation()}
         >
           <button
@@ -333,34 +213,16 @@ export default function Sidebar({
               setRenameName(contextMenu.project.name)
               setContextMenu(null)
             }}
-            style={{
-              display: 'block',
-              width: '100%',
-              padding: '7px 12px',
-              textAlign: 'left',
-              borderRadius: '6px',
-              fontSize: '13px',
-              color: 'var(--text)'
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-active)')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            className="flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-sm text-foreground hover:bg-accent transition-colors"
           >
+            <Pencil className="size-3.5" />
             Renomear
           </button>
           <button
             onClick={() => handleDelete(contextMenu.project)}
-            style={{
-              display: 'block',
-              width: '100%',
-              padding: '7px 12px',
-              textAlign: 'left',
-              borderRadius: '6px',
-              fontSize: '13px',
-              color: 'var(--danger)'
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-active)')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+            className="flex items-center gap-2 w-full px-3 py-1.5 rounded-md text-sm text-destructive hover:bg-destructive/10 transition-colors"
           >
+            <Trash2 className="size-3.5" />
             Deletar
           </button>
         </div>

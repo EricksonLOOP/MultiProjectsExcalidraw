@@ -1,5 +1,6 @@
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
+import { resolve } from 'path'
 
 export default defineConfig({
   main: {
@@ -10,9 +11,14 @@ export default defineConfig({
   },
   renderer: {
     plugins: [react()],
+    resolve: {
+      alias: {
+        '@': resolve(__dirname, 'src/renderer/src')
+      }
+    },
     define: {
-      'process.env': '({})',
-      'process.env.NODE_ENV': JSON.stringify('development'),
+      'process.env': '{}',
+      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production'),
       'process.platform': JSON.stringify('browser')
     },
     optimizeDeps: {

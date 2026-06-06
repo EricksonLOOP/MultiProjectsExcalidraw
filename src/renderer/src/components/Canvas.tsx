@@ -30,10 +30,7 @@ export default function Canvas({ project }: Props) {
           const data = JSON.parse(raw)
           setInitialData({
             elements: data.elements ?? [],
-            appState: {
-              ...(data.appState ?? {}),
-              collaborators: new Map()
-            },
+            appState: { ...(data.appState ?? {}), collaborators: new Map() },
             files: data.files ?? {}
           })
         } catch {
@@ -48,20 +45,14 @@ export default function Canvas({ project }: Props) {
       cancelled = true
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current)
-        // flush pending save synchronously on unmount
         if (isDirtyRef.current && apiRef.current) {
           const scene = apiRef.current.getSceneElements()
           const appState = apiRef.current.getAppState()
           const files = apiRef.current.getFiles()
           const payload = JSON.stringify({
-            type: 'excalidraw',
-            version: 2,
-            source: 'multi-projects-excalidraw',
+            type: 'excalidraw', version: 2, source: 'multi-projects-excalidraw',
             elements: scene,
-            appState: {
-              viewBackgroundColor: appState.viewBackgroundColor,
-              gridSize: appState.gridSize
-            },
+            appState: { viewBackgroundColor: appState.viewBackgroundColor, gridSize: appState.gridSize },
             files
           }, null, 2)
           window.api.saveProject(project.path, payload)
@@ -79,14 +70,9 @@ export default function Canvas({ project }: Props) {
       const appState = apiRef.current.getAppState()
       const files = apiRef.current.getFiles()
       const payload = JSON.stringify({
-        type: 'excalidraw',
-        version: 2,
-        source: 'multi-projects-excalidraw',
+        type: 'excalidraw', version: 2, source: 'multi-projects-excalidraw',
         elements,
-        appState: {
-          viewBackgroundColor: appState.viewBackgroundColor,
-          gridSize: appState.gridSize
-        },
+        appState: { viewBackgroundColor: appState.viewBackgroundColor, gridSize: appState.gridSize },
         files
       }, null, 2)
       await window.api.saveProject(project.path, payload)
@@ -96,21 +82,14 @@ export default function Canvas({ project }: Props) {
 
   if (loading || !initialData) {
     return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100%',
-        color: 'var(--text-muted)',
-        fontSize: '14px'
-      }}>
+      <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
         Carregando projeto...
       </div>
     )
   }
 
   return (
-    <div style={{ width: '100%', height: '100%' }}>
+    <div className="w-full h-full">
       <Excalidraw
         excalidrawAPI={(api) => { apiRef.current = api }}
         initialData={initialData}
