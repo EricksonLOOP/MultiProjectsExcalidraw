@@ -159,8 +159,6 @@ const TEMPLATES: Template[] = [
   },
 ]
 
-const STORAGE_KEY = 'devson-quickstart-custom-templates'
-
 function customToTemplate(ct: CustomTemplate): Template {
   return {
     id: ct.id,
@@ -207,18 +205,23 @@ export default function QuickStart({ onBack, shortcut }: Props) {
   const [view, setView] = useState<View>('run')
   const [editingTemplate, setEditingTemplate] = useState<CustomTemplate | null>(null)
 
-  // Load custom templates from localStorage
+  // Carrega templates do DB (com migração automática do localStorage)
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored) setCustomTemplates(JSON.parse(stored))
-    } catch { /* ignore */ }
+    window.api.db.getTemplates().then(async dbTemplates => {
+      if (dbTemplates.length > 0) {
+        setCustomTemplates(dbTemplates)
+      } else {
+        try {
+          const legacy = localStorage.getItem('devson-quickstart-custom-templates')
+          if (legacy) {
+            const parsed = JSON.parse(legacy) as CustomTemplate[]
+            for (const t of parsed) await window.api.db.upsertTemplate(t)
+            setCustomTemplates(parsed)
+          }
+        } catch { /* sem dados legados */ }
+      }
+    })
   }, [])
-
-  // Persist custom templates
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(customTemplates))
-  }, [customTemplates])
 
   // Auto-scroll terminal
   useEffect(() => {
@@ -292,6 +295,7 @@ export default function QuickStart({ onBack, shortcut }: Props) {
   const openEditTemplate = (ct: CustomTemplate) => { setEditingTemplate(ct); setView('editor') }
 
   const handleSaveTemplate = (ct: CustomTemplate) => {
+    window.api.db.upsertTemplate(ct)
     setCustomTemplates(prev => {
       const idx = prev.findIndex(t => t.id === ct.id)
       if (idx >= 0) { const next = [...prev]; next[idx] = ct; return next }
@@ -302,6 +306,7 @@ export default function QuickStart({ onBack, shortcut }: Props) {
   }
 
   const handleDeleteTemplate = (id: string) => {
+    window.api.db.deleteTemplate(id)
     setCustomTemplates(prev => prev.filter(t => t.id !== id))
     if (selected?.id === id) { setSelected(null); setView('run') }
   }

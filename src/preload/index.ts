@@ -1,6 +1,16 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
 contextBridge.exposeInMainWorld('api', {
+  db: {
+    getSetting: (key: string) => ipcRenderer.invoke('db:getSetting', key),
+    setSetting: (key: string, value: string) => ipcRenderer.invoke('db:setSetting', key, value),
+    getIntegrations: () => ipcRenderer.invoke('db:getIntegrations'),
+    upsertIntegration: (i: WebIntegration) => ipcRenderer.invoke('db:upsertIntegration', i),
+    deleteIntegration: (id: string) => ipcRenderer.invoke('db:deleteIntegration', id),
+    getTemplates: () => ipcRenderer.invoke('db:getTemplates'),
+    upsertTemplate: (t: CustomTemplate) => ipcRenderer.invoke('db:upsertTemplate', t),
+    deleteTemplate: (id: string) => ipcRenderer.invoke('db:deleteTemplate', id),
+  },
   selectFolder: () => ipcRenderer.invoke('dialog:selectFolder'),
   listProjects: (folderPath: string) => ipcRenderer.invoke('projects:list', folderPath),
   readProject: (filePath: string) => ipcRenderer.invoke('projects:read', filePath),

@@ -8,8 +8,6 @@ import Canvas from './components/Canvas'
 import WebPanel from './components/WebPanel'
 import QuickStart from './components/QuickStart'
 
-const FOLDER_KEY = 'devson-excalidraw-folder'
-
 // Esquema de atalhos:
 // Ctrl+H → Hub
 // Ctrl+1 → Excalidraw
@@ -22,7 +20,7 @@ export default function App() {
   const [openWebPanels, setOpenWebPanels] = useState<WebIntegration[]>([])
 
   // Estado do Excalidraw
-  const [folderPath, setFolderPath] = useState<string | null>(() => localStorage.getItem(FOLDER_KEY))
+  const [folderPath, setFolderPath] = useState<string | null>(null)
   const [projects, setProjects] = useState<ProjectFile[]>([])
   const [activeProject, setActiveProject] = useState<ProjectFile | null>(null)
 
@@ -30,6 +28,21 @@ export default function App() {
     const list = await window.api.listProjects(folder)
     setProjects(list)
     return list
+  }, [])
+
+  // Carrega a pasta do DB (com migração automática do localStorage)
+  useEffect(() => {
+    window.api.db.getSetting('excalidraw-folder').then(saved => {
+      if (saved) {
+        setFolderPath(saved)
+      } else {
+        const legacy = localStorage.getItem('devson-excalidraw-folder')
+        if (legacy) {
+          setFolderPath(legacy)
+          window.api.db.setSetting('excalidraw-folder', legacy)
+        }
+      }
+    })
   }, [])
 
   useEffect(() => {
@@ -63,7 +76,7 @@ export default function App() {
   const handleSelectFolder = async () => {
     const folder = await window.api.selectFolder()
     if (!folder) return
-    localStorage.setItem(FOLDER_KEY, folder)
+    window.api.db.setSetting('excalidraw-folder', folder)
     setFolderPath(folder)
     setActiveProject(null)
     const list = await loadProjects(folder)
@@ -74,7 +87,7 @@ export default function App() {
     if (!folderPath) {
       const folder = await window.api.selectFolder()
       if (!folder) return
-      localStorage.setItem(FOLDER_KEY, folder)
+      window.api.db.setSetting('excalidraw-folder', folder)
       setFolderPath(folder)
       const list = await loadProjects(folder)
       if (list.length > 0) setActiveProject(list[0])

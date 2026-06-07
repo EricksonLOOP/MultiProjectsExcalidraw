@@ -4,6 +4,13 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import fs from 'fs'
 import { spawn } from 'child_process'
 import type { ChildProcess } from 'child_process'
+import {
+  initDatabase,
+  getSetting, setSetting,
+  getIntegrations, upsertIntegration, deleteIntegration,
+  getTemplates, upsertTemplate, deleteTemplate,
+  type DbWebIntegration, type DbTemplate,
+} from './database'
 
 function getIconPath(): string {
   const names = ['icon.png', 'icon.ico']
@@ -65,6 +72,7 @@ app.whenReady().then(() => {
     optimizer.watchWindowShortcuts(window)
   })
 
+  initDatabase()
   registerIpcHandlers()
   createWindow()
 
@@ -229,4 +237,17 @@ function registerIpcHandlers(): void {
       return null
     }
   })
+
+  // ── Database ────────────────────────────────────────────────────────────────
+
+  ipcMain.handle('db:getSetting', (_e, key: string) => getSetting(key))
+  ipcMain.handle('db:setSetting', (_e, key: string, value: string) => setSetting(key, value))
+
+  ipcMain.handle('db:getIntegrations', () => getIntegrations())
+  ipcMain.handle('db:upsertIntegration', (_e, i: DbWebIntegration) => upsertIntegration(i))
+  ipcMain.handle('db:deleteIntegration', (_e, id: string) => deleteIntegration(id))
+
+  ipcMain.handle('db:getTemplates', () => getTemplates())
+  ipcMain.handle('db:upsertTemplate', (_e, t: DbTemplate) => upsertTemplate(t))
+  ipcMain.handle('db:deleteTemplate', (_e, id: string) => deleteTemplate(id))
 }

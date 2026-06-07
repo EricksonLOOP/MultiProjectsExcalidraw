@@ -26,6 +26,16 @@ interface CustomTemplate {
 
 interface Window {
   api: {
+    db: {
+      getSetting: (key: string) => Promise<string | null>
+      setSetting: (key: string, value: string) => Promise<void>
+      getIntegrations: () => Promise<WebIntegration[]>
+      upsertIntegration: (i: WebIntegration) => Promise<void>
+      deleteIntegration: (id: string) => Promise<void>
+      getTemplates: () => Promise<CustomTemplate[]>
+      upsertTemplate: (t: CustomTemplate) => Promise<void>
+      deleteTemplate: (id: string) => Promise<void>
+    }
     selectFolder: () => Promise<string | null>
     listProjects: (folderPath: string) => Promise<ProjectFile[]>
     readProject: (filePath: string) => Promise<string | null>

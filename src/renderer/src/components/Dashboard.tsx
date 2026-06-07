@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { PenLine, Plus, Globe, Trash2, X, Zap } from 'lucide-react'
 
 function FaviconIcon({ url, className }: { url: string; className?: string }) {
@@ -21,8 +21,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
-const INTEGRATIONS_KEY = 'hub-web-integrations'
-
 const DEFAULT_INTEGRATIONS: WebIntegration[] = [
   {
     id: 'spotify',
@@ -33,19 +31,6 @@ const DEFAULT_INTEGRATIONS: WebIntegration[] = [
   }
 ]
 
-function loadIntegrations(): WebIntegration[] {
-  try {
-    const stored = localStorage.getItem(INTEGRATIONS_KEY)
-    return stored ? JSON.parse(stored) : DEFAULT_INTEGRATIONS
-  } catch {
-    return DEFAULT_INTEGRATIONS
-  }
-}
-
-function saveIntegrations(integrations: WebIntegration[]) {
-  localStorage.setItem(INTEGRATIONS_KEY, JSON.stringify(integrations))
-}
-
 interface Props {
   onOpenExcalidraw: () => void
   onOpenWeb: (integration: WebIntegration) => void
@@ -54,19 +39,37 @@ interface Props {
 }
 
 export default function Dashboard({ onOpenExcalidraw, onOpenWeb, onOpenQuickStart, openWebPanelIds }: Props) {
-  const [integrations, setIntegrations] = useState<WebIntegration[]>(loadIntegrations)
+  const [integrations, setIntegrations] = useState<WebIntegration[]>([])
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState({ name: '', url: '' })
   const [error, setError] = useState('')
+
+  // Carrega do DB (com migração automática do localStorage)
+  useEffect(() => {
+    window.api.db.getIntegrations().then(async dbInts => {
+      if (dbInts.length > 0) {
+        setIntegrations(dbInts)
+      } else {
+        // Primeira execução: migra do localStorage ou usa defaults
+        let source: WebIntegration[] = DEFAULT_INTEGRATIONS
+        try {
+          const legacy = localStorage.getItem('hub-web-integrations')
+          if (legacy) source = JSON.parse(legacy)
+        } catch { /* usa defaults */ }
+        for (const i of source) await window.api.db.upsertIntegration(i)
+        setIntegrations(source)
+      }
+    })
+  }, [])
 
   const handleAdd = () => {
     const name = form.name.trim()
     let url = form.url.trim()
     if (!name || !url) { setError('Preencha nome e URL.'); return }
     if (!url.startsWith('http')) url = 'https://' + url
-    const next = [...integrations, { id: crypto.randomUUID(), name, url, description: url, color: '' }]
-    setIntegrations(next)
-    saveIntegrations(next)
+    const item: WebIntegration = { id: crypto.randomUUID(), name, url, description: url, color: '' }
+    window.api.db.upsertIntegration(item)
+    setIntegrations(prev => [...prev, item])
     setForm({ name: '', url: '' })
     setAdding(false)
     setError('')
@@ -74,9 +77,8 @@ export default function Dashboard({ onOpenExcalidraw, onOpenWeb, onOpenQuickStar
 
   const handleRemove = (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    const next = integrations.filter(i => i.id !== id)
-    setIntegrations(next)
-    saveIntegrations(next)
+    window.api.db.deleteIntegration(id)
+    setIntegrations(prev => prev.filter(i => i.id !== id))
   }
 
   return (

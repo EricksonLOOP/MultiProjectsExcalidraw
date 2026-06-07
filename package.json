@@ -8,18 +8,22 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "icons": "node scripts/generate-icons.mjs",
-    "dist": "electron-vite build && electron-builder"
+    "dist": "electron-vite build && electron-builder",
+    "rebuild": "electron-rebuild -f -w better-sqlite3"
   },
   "dependencies": {
     "@electron-toolkit/utils": "^4.0.0",
     "@excalidraw/excalidraw": "^0.17.6",
     "@radix-ui/react-slot": "^1.2.5",
+    "better-sqlite3": "^12.10.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.17.0",
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.4",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20.14.0",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
@@ -43,7 +47,10 @@
       "output": "dist"
     },
     "extraResources": [
-      { "from": "resources", "to": "resources" }
+      {
+        "from": "resources",
+        "to": "resources"
+      }
     ],
     "win": {
       "target": "nsis",
