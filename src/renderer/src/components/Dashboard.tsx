@@ -32,9 +32,10 @@ function saveIntegrations(integrations: WebIntegration[]) {
 interface Props {
   onOpenExcalidraw: () => void
   onOpenWeb: (integration: WebIntegration) => void
+  openWebPanelIds: string[]
 }
 
-export default function Dashboard({ onOpenExcalidraw, onOpenWeb }: Props) {
+export default function Dashboard({ onOpenExcalidraw, onOpenWeb, openWebPanelIds }: Props) {
   const [integrations, setIntegrations] = useState<WebIntegration[]>(loadIntegrations)
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState({ name: '', url: '' })
@@ -88,6 +89,9 @@ export default function Dashboard({ onOpenExcalidraw, onOpenWeb }: Props) {
               'hover:border-primary hover:shadow-lg hover:shadow-primary/10 hover:scale-[1.02]'
             )}
           >
+            <span className="absolute top-2 right-2 text-[10px] font-mono text-muted-foreground bg-secondary px-1.5 py-0.5 rounded border border-border">
+              Ctrl+1
+            </span>
             <div className="flex items-center justify-center size-11 rounded-lg bg-primary/10 border border-primary/20">
               <PenLine className="size-5 text-primary" />
             </div>
@@ -98,7 +102,10 @@ export default function Dashboard({ onOpenExcalidraw, onOpenWeb }: Props) {
           </button>
 
           {/* Integrações web */}
-          {integrations.map(integration => (
+          {integrations.map((integration, index) => {
+            const isOpen = openWebPanelIds.includes(integration.id)
+            const shortcut = `Ctrl+${index + 2}`
+            return (
             <button
               key={integration.id}
               onClick={() => onOpenWeb(integration)}
@@ -108,12 +115,20 @@ export default function Dashboard({ onOpenExcalidraw, onOpenWeb }: Props) {
                 'hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 hover:scale-[1.02]'
               )}
             >
-              <button
-                onClick={(e) => handleRemove(integration.id, e)}
-                className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md text-muted-foreground hover:text-destructive"
-              >
-                <Trash2 className="size-3" />
-              </button>
+              <div className="absolute top-2 right-2 flex items-center gap-1.5">
+                {isOpen && (
+                  <span className="size-1.5 rounded-full bg-primary" title="Rodando em background" />
+                )}
+                <span className="text-[10px] font-mono text-muted-foreground bg-secondary px-1.5 py-0.5 rounded border border-border opacity-0 group-hover:opacity-100 transition-opacity">
+                  {shortcut}
+                </span>
+                <button
+                  onClick={(e) => handleRemove(integration.id, e)}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded text-muted-foreground hover:text-destructive"
+                >
+                  <Trash2 className="size-3" />
+                </button>
+              </div>
               <div className="flex items-center justify-center size-11 rounded-lg bg-secondary border border-border">
                 <Globe className="size-5 text-muted-foreground group-hover:text-primary transition-colors" />
               </div>
@@ -122,7 +137,8 @@ export default function Dashboard({ onOpenExcalidraw, onOpenWeb }: Props) {
                 <p className="text-xs text-muted-foreground mt-0.5 truncate">{integration.description}</p>
               </div>
             </button>
-          ))}
+            )
+          })}
 
           {/* Adicionar */}
           {!adding ? (

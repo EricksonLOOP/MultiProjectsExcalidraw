@@ -9,13 +9,18 @@ import WebPanel from './components/WebPanel'
 
 const FOLDER_KEY = 'devson-excalidraw-folder'
 
-type View =
-  | { type: 'home' }
-  | { type: 'excalidraw' }
-  | { type: 'web'; integration: WebIntegration }
+// Esquema de atalhos:
+// Ctrl+H → Hub
+// Ctrl+1 → Excalidraw
+// Ctrl+2, Ctrl+3... → painéis web na ordem em que foram abertos
+const HUB_KEY = 'h'
+const EXCALIDRAW_KEY = '1'
 
 export default function App() {
-  const [view, setView] = useState<View>({ type: 'home' })
+  const [activePanel, setActivePanel] = useState<string>('home')
+  const [openWebPanels, setOpenWebPanels] = useState<WebIntegration[]>([])
+
+  // Estado do Excalidraw
   const [folderPath, setFolderPath] = useState<string | null>(() => localStorage.getItem(FOLDER_KEY))
   const [projects, setProjects] = useState<ProjectFile[]>([])
   const [activeProject, setActiveProject] = useState<ProjectFile | null>(null)
@@ -33,6 +38,25 @@ export default function App() {
       })
     }
   }, [folderPath])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const webKeys = Object.fromEntries(
+      openWebPanels.map((p, i) => [`${i + 2}`, p.id])
+    )
+
+    const handler = (e: KeyboardEvent) => {
+      if (!e.ctrlKey) return
+      const key = e.key.toLowerCase()
+
+      if (key === HUB_KEY) { e.preventDefault(); setActivePanel('home'); return }
+      if (key === EXCALIDRAW_KEY) { e.preventDefault(); setActivePanel('excalidraw'); return }
+      if (webKeys[key]) { e.preventDefault(); setActivePanel(webKeys[key]); return }
+    }
+
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [openWebPanels])
 
   const handleSelectFolder = async () => {
     const folder = await window.api.selectFolder()
@@ -53,7 +77,14 @@ export default function App() {
       const list = await loadProjects(folder)
       if (list.length > 0) setActiveProject(list[0])
     }
-    setView({ type: 'excalidraw' })
+    setActivePanel('excalidraw')
+  }
+
+  const handleOpenWeb = (integration: WebIntegration) => {
+    setOpenWebPanels(prev =>
+      prev.find(p => p.id === integration.id) ? prev : [...prev, integration]
+    )
+    setActivePanel(integration.id)
   }
 
   const handleProjectCreated = async () => {
@@ -74,64 +105,86 @@ export default function App() {
     if (activeProject?.path === oldPath) setActiveProject(newProject)
   }
 
-  const goHome = () => setView({ type: 'home' })
-
-  // --- Dashboard ---
-  if (view.type === 'home') {
-    return (
-      <Dashboard
-        onOpenExcalidraw={handleOpenExcalidraw}
-        onOpenWeb={integration => setView({ type: 'web', integration })}
-      />
-    )
-  }
-
-  // --- Painel Web (Spotify, etc.) ---
-  if (view.type === 'web') {
-    return <WebPanel integration={view.integration} onBack={goHome} />
-  }
-
-  // --- Excalidraw ---
-  if (!folderPath) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full gap-4 bg-background">
-        <h1 className="text-2xl font-semibold text-foreground">Excalidraw</h1>
-        <p className="text-sm text-muted-foreground">Escolha uma pasta para armazenar seus projetos</p>
-        <Button onClick={handleSelectFolder}>
-          <FolderOpen />
-          Escolher pasta
-        </Button>
-      </div>
-    )
-  }
+  const webShortcut = (index: number) => `Ctrl+${index + 2}`
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      <NavBar title="Excalidraw" onBack={goHome} />
+    <div className="relative h-full overflow-hidden">
+
+      {/* ── Hub / Dashboard ── */}
       <div
-        className="flex flex-1 overflow-hidden"
-        style={{ paddingTop: 'calc(var(--titlebar-height) + var(--navbar-height))' }}
+        className="absolute inset-0 flex flex-col"
+        style={{ display: activePanel === 'home' ? 'flex' : 'none' }}
       >
-        <Sidebar
-          folderPath={folderPath}
-          projects={projects}
-          activeProject={activeProject}
-          onSelectProject={setActiveProject}
-          onProjectCreated={handleProjectCreated}
-          onProjectDeleted={handleProjectDeleted}
-          onProjectRenamed={handleProjectRenamed}
-          onChangeFolder={handleSelectFolder}
+        <Dashboard
+          onOpenExcalidraw={handleOpenExcalidraw}
+          onOpenWeb={handleOpenWeb}
+          openWebPanelIds={openWebPanels.map(p => p.id)}
         />
-        <div className="flex-1 overflow-hidden">
-          {activeProject ? (
-            <Canvas key={activeProject.path} project={activeProject} />
+      </div>
+
+      {/* ── Excalidraw ── */}
+      <div
+        className="absolute inset-0 flex flex-col"
+        style={{ display: activePanel === 'excalidraw' ? 'flex' : 'none' }}
+      >
+        <NavBar title="Excalidraw" onBack={() => setActivePanel('home')} shortcut="Ctrl+1" />
+        <div
+          className="flex flex-1 overflow-hidden"
+          style={{ paddingTop: 'calc(var(--titlebar-height) + var(--navbar-height))' }}
+        >
+          {folderPath ? (
+            <>
+              <Sidebar
+                folderPath={folderPath}
+                projects={projects}
+                activeProject={activeProject}
+                onSelectProject={setActiveProject}
+                onProjectCreated={handleProjectCreated}
+                onProjectDeleted={handleProjectDeleted}
+                onProjectRenamed={handleProjectRenamed}
+                onChangeFolder={handleSelectFolder}
+              />
+              <div className="flex-1 overflow-hidden">
+                {activeProject ? (
+                  <Canvas key={activeProject.path} project={activeProject} />
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full gap-4">
+                    <p className="text-sm text-muted-foreground">Nenhum projeto aberto.</p>
+                  </div>
+                )}
+              </div>
+            </>
           ) : (
-            <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
-              Nenhum projeto aberto. Crie um novo na barra lateral.
+            <div className="flex flex-col items-center justify-center h-full gap-4 flex-1">
+              <p className="text-sm text-muted-foreground">Escolha uma pasta para seus projetos</p>
+              <Button onClick={handleSelectFolder}>
+                <FolderOpen />
+                Escolher pasta
+              </Button>
             </div>
           )}
         </div>
       </div>
+
+      {/* ── Painéis Web (sempre montados, ocultos via visibility) ── */}
+      {openWebPanels.map((integration, index) => (
+        <div
+          key={integration.id}
+          className="absolute inset-0 flex flex-col"
+          style={{
+            // visibility:hidden mantém o processo vivo (áudio continua)
+            // display:none destruiria o webview
+            visibility: activePanel === integration.id ? 'visible' : 'hidden',
+            pointerEvents: activePanel === integration.id ? 'auto' : 'none',
+          }}
+        >
+          <WebPanel
+            integration={integration}
+            onBack={() => setActivePanel('home')}
+            shortcut={webShortcut(index)}
+          />
+        </div>
+      ))}
     </div>
   )
 }
