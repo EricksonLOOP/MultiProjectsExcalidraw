@@ -1,5 +1,22 @@
 import { useState } from 'react'
 import { PenLine, Plus, Globe, Trash2, X } from 'lucide-react'
+
+function FaviconIcon({ url, className }: { url: string; className?: string }) {
+  const [failed, setFailed] = useState(false)
+  try {
+    const domain = new URL(url).hostname
+    if (!failed) {
+      return (
+        <img
+          src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
+          className={cn('size-6 rounded-sm object-contain', className)}
+          onError={() => setFailed(true)}
+        />
+      )
+    }
+  } catch { /* URL inválida */ }
+  return <Globe className={cn('size-5 text-muted-foreground', className)} />
+}
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -129,8 +146,8 @@ export default function Dashboard({ onOpenExcalidraw, onOpenWeb, openWebPanelIds
                   <Trash2 className="size-3" />
                 </button>
               </div>
-              <div className="flex items-center justify-center size-11 rounded-lg bg-secondary border border-border">
-                <Globe className="size-5 text-muted-foreground group-hover:text-primary transition-colors" />
+              <div className="flex items-center justify-center size-11 rounded-lg bg-secondary border border-border overflow-hidden">
+                <FaviconIcon url={integration.url} />
               </div>
               <div>
                 <p className="font-semibold text-sm text-foreground">{integration.name}</p>
@@ -159,7 +176,8 @@ export default function Dashboard({ onOpenExcalidraw, onOpenWeb, openWebPanelIds
             <div className="flex flex-col gap-2 p-4 rounded-xl border border-primary/30 bg-card col-span-2 sm:col-span-1">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-medium text-foreground flex items-center gap-1.5">
-                  <Globe className="size-3.5 text-primary" /> Nova ferramenta
+                  {form.url ? <FaviconIcon url={form.url.startsWith('http') ? form.url : `https://${form.url}`} className="size-3.5 rounded-sm" /> : <Globe className="size-3.5 text-primary" />}
+                  Nova ferramenta
                 </span>
                 <button onClick={() => { setAdding(false); setError('') }}>
                   <X className="size-3.5 text-muted-foreground hover:text-foreground" />
