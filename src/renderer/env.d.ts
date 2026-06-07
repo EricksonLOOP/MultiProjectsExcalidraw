@@ -2,6 +2,28 @@
 
 interface QuickstartOutput { type: 'stdout' | 'stderr' | 'info'; data: string }
 
+interface CustomTemplateOption {
+  id: string
+  label: string
+  description?: string
+  default: boolean
+  flag: string
+}
+
+interface CustomTemplate {
+  id: string
+  name: string
+  description: string
+  category: string
+  icon: string
+  color: string
+  textColor: string
+  commandTemplate: string
+  postInstallTemplate?: string
+  options: CustomTemplateOption[]
+  createdAt: number
+}
+
 interface Window {
   api: {
     selectFolder: () => Promise<string | null>
@@ -18,6 +40,8 @@ interface Window {
       selectFolder: () => Promise<string | null>
       onOutput: (cb: (data: QuickstartOutput) => void) => () => void
       onExit: (cb: (code: number) => void) => () => void
+      exportTemplates: (templates: CustomTemplate[]) => Promise<boolean>
+      importTemplates: () => Promise<unknown>
     }
   }
 }

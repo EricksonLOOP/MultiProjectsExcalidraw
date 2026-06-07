@@ -202,4 +202,31 @@ function registerIpcHandlers(): void {
     })
     return result.canceled ? null : result.filePaths[0]
   })
+
+  ipcMain.handle('quickstart:exportTemplates', async (_event, templates: unknown[]) => {
+    const result = await dialog.showSaveDialog({
+      title: 'Exportar templates do Quick Start',
+      defaultPath: 'devson-templates.json',
+      filters: [{ name: 'JSON', extensions: ['json'] }]
+    })
+    if (result.canceled || !result.filePath) return false
+    const data = JSON.stringify({ version: 1, exportedAt: Date.now(), templates }, null, 2)
+    fs.writeFileSync(result.filePath, data, 'utf-8')
+    return true
+  })
+
+  ipcMain.handle('quickstart:importTemplates', async () => {
+    const result = await dialog.showOpenDialog({
+      title: 'Importar templates do Quick Start',
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+      properties: ['openFile']
+    })
+    if (result.canceled || !result.filePaths[0]) return null
+    try {
+      const content = fs.readFileSync(result.filePaths[0], 'utf-8')
+      return JSON.parse(content)
+    } catch {
+      return null
+    }
+  })
 }

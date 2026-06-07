@@ -24,6 +24,9 @@ contextBridge.exposeInMainWorld('api', {
       const handler = (_: Electron.IpcRendererEvent, code: number) => cb(code)
       ipcRenderer.on('quickstart:exit', handler)
       return () => ipcRenderer.removeListener('quickstart:exit', handler)
-    }
+    },
+    exportTemplates: (templates: CustomTemplate[]) =>
+      ipcRenderer.invoke('quickstart:exportTemplates', templates),
+    importTemplates: () => ipcRenderer.invoke('quickstart:importTemplates'),
   }
 })

@@ -1,11 +1,15 @@
 import { useState, useRef, useEffect } from 'react'
-import { FolderOpen, Play, Square, FolderOpenIcon, ChevronRight, Check, Terminal } from 'lucide-react'
+import {
+  FolderOpen, Play, Square, FolderOpenIcon, ChevronRight, Check,
+  Terminal, Plus, Pencil, Trash2, Upload, Download,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import NavBar from './NavBar'
+import TemplateEditor from './TemplateEditor'
 
-// ── Templates ────────────────────────────────────────────────────────────────
+// ── Built-in Templates ────────────────────────────────────────────────────────
 
 interface TemplateOption {
   id: string
@@ -19,15 +23,16 @@ interface Template {
   name: string
   description: string
   category: string
-  color: string         // tailwind bg color class
-  textColor: string     // tailwind text color
+  color: string
+  textColor: string
   command: (name: string, opts: Record<string, boolean>) => string
   postInstall?: (name: string, opts: Record<string, boolean>) => string | null
   options: TemplateOption[]
 }
 
+const BUILTIN_CATEGORIES = ['Frontend', 'Backend', 'Desktop', 'Sistemas']
+
 const TEMPLATES: Template[] = [
-  // ── Frontend ──
   {
     id: 'nextjs',
     name: 'Next.js',
@@ -60,9 +65,7 @@ const TEMPLATES: Template[] = [
     category: 'Frontend',
     color: 'bg-purple-500/20',
     textColor: 'text-purple-300',
-    options: [
-      { id: 'typescript', label: 'TypeScript', default: true },
-    ],
+    options: [{ id: 'typescript', label: 'TypeScript', default: true }],
     command: (name, opts) =>
       `npm create vite@latest ${name} -- --template ${opts.typescript ? 'react-ts' : 'react'}`,
   },
@@ -73,13 +76,9 @@ const TEMPLATES: Template[] = [
     category: 'Frontend',
     color: 'bg-orange-500/20',
     textColor: 'text-orange-300',
-    options: [
-      { id: 'typescript', label: 'TypeScript', default: true },
-    ],
+    options: [{ id: 'typescript', label: 'TypeScript', default: true }],
     command: (name) => `npm create astro@latest ${name} -- --template minimal --yes`,
   },
-
-  // ── Backend ──
   {
     id: 'nestjs',
     name: 'NestJS',
@@ -97,9 +96,7 @@ const TEMPLATES: Template[] = [
     category: 'Backend',
     color: 'bg-primary/20',
     textColor: 'text-primary',
-    options: [
-      { id: 'typescript', label: 'TypeScript', default: true },
-    ],
+    options: [{ id: 'typescript', label: 'TypeScript', default: true }],
     command: (name, opts) => opts.typescript
       ? `npx express-generator-typescript ${name}`
       : `npx express-generator --no-view ${name}`,
@@ -111,14 +108,10 @@ const TEMPLATES: Template[] = [
     category: 'Backend',
     color: 'bg-yellow-500/20',
     textColor: 'text-yellow-300',
-    options: [
-      { id: 'typescript', label: 'TypeScript', default: true },
-    ],
+    options: [{ id: 'typescript', label: 'TypeScript', default: true }],
     command: (name, opts) =>
       `npm create fastify@latest ${name} -- --lang=${opts.typescript ? 'ts' : 'js'}`,
   },
-
-  // ── Desktop ──
   {
     id: 'electron-vite',
     name: 'Electron + Vite',
@@ -126,14 +119,10 @@ const TEMPLATES: Template[] = [
     category: 'Desktop',
     color: 'bg-blue-500/20',
     textColor: 'text-blue-300',
-    options: [
-      { id: 'typescript', label: 'TypeScript', default: true },
-    ],
+    options: [{ id: 'typescript', label: 'TypeScript', default: true }],
     command: (name, opts) =>
       `npm create @quick-start/electron@latest ${name} -- --template ${opts.typescript ? 'react-ts' : 'react'} --skip-git`,
   },
-
-  // ── Sistemas ──
   {
     id: 'rust',
     name: 'Rust',
@@ -141,9 +130,7 @@ const TEMPLATES: Template[] = [
     category: 'Sistemas',
     color: 'bg-orange-600/20',
     textColor: 'text-orange-400',
-    options: [
-      { id: 'lib', label: 'Library (--lib)', default: false },
-    ],
+    options: [{ id: 'lib', label: 'Library (--lib)', default: false }],
     command: (name, opts) => `cargo new ${name}${opts.lib ? ' --lib' : ''}`,
   },
   {
@@ -172,7 +159,29 @@ const TEMPLATES: Template[] = [
   },
 ]
 
-const CATEGORIES = ['Frontend', 'Backend', 'Desktop', 'Sistemas']
+const STORAGE_KEY = 'devson-quickstart-custom-templates'
+
+function customToTemplate(ct: CustomTemplate): Template {
+  return {
+    id: ct.id,
+    name: ct.name,
+    description: ct.description,
+    category: ct.category,
+    color: ct.color,
+    textColor: ct.textColor,
+    options: ct.options.map(o => ({ id: o.id, label: o.label, description: o.description, default: o.default })),
+    command: (name, opts) => {
+      let cmd = ct.commandTemplate.replace(/\{name\}/g, name)
+      for (const opt of ct.options) {
+        if (opts[opt.id] && opt.flag.trim()) cmd += ` ${opt.flag.trim()}`
+      }
+      return cmd
+    },
+    postInstall: ct.postInstallTemplate
+      ? (name) => ct.postInstallTemplate!.replace(/\{name\}/g, name)
+      : undefined,
+  }
+}
 
 // ── Componente ────────────────────────────────────────────────────────────────
 
@@ -182,6 +191,7 @@ interface Props {
 }
 
 type RunState = 'idle' | 'running' | 'done' | 'error'
+type View = 'run' | 'editor'
 
 export default function QuickStart({ onBack, shortcut }: Props) {
   const [category, setCategory] = useState('Frontend')
@@ -193,6 +203,23 @@ export default function QuickStart({ onBack, shortcut }: Props) {
   const [runState, setRunState] = useState<RunState>('idle')
   const terminalRef = useRef<HTMLDivElement>(null)
 
+  const [customTemplates, setCustomTemplates] = useState<CustomTemplate[]>([])
+  const [view, setView] = useState<View>('run')
+  const [editingTemplate, setEditingTemplate] = useState<CustomTemplate | null>(null)
+
+  // Load custom templates from localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY)
+      if (stored) setCustomTemplates(JSON.parse(stored))
+    } catch { /* ignore */ }
+  }, [])
+
+  // Persist custom templates
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(customTemplates))
+  }, [customTemplates])
+
   // Auto-scroll terminal
   useEffect(() => {
     if (terminalRef.current) {
@@ -200,12 +227,10 @@ export default function QuickStart({ onBack, shortcut }: Props) {
     }
   }, [lines])
 
-  // Registra listeners IPC uma vez
+  // IPC listeners
   useEffect(() => {
-    const offOutput = window.api.quickstart.onOutput((data) => {
-      setLines(prev => [...prev, data])
-    })
-    const offExit = window.api.quickstart.onExit((code) => {
+    const offOutput = window.api.quickstart.onOutput(data => setLines(prev => [...prev, data]))
+    const offExit = window.api.quickstart.onExit(code => {
       setRunState(code === 0 ? 'done' : 'error')
       setLines(prev => [...prev, {
         type: code === 0 ? 'info' : 'stderr',
@@ -215,11 +240,21 @@ export default function QuickStart({ onBack, shortcut }: Props) {
     return () => { offOutput(); offExit() }
   }, [])
 
+  // Computed
+  const customCategories = [...new Set(customTemplates.map(ct => ct.category))]
+    .filter(c => !BUILTIN_CATEGORIES.includes(c))
+  const allCategories = [...BUILTIN_CATEGORIES, ...customCategories]
+
+  const builtinInCategory = TEMPLATES.filter(t => t.category === category)
+  const customInCategory = customTemplates.filter(ct => ct.category === category)
+
+  // Handlers
   const selectTemplate = (t: Template) => {
     setSelected(t)
     setOptions(Object.fromEntries(t.options.map(o => [o.id, o.default])))
     setLines([])
     setRunState('idle')
+    setView('run')
   }
 
   const pickFolder = async () => {
@@ -231,11 +266,9 @@ export default function QuickStart({ onBack, shortcut }: Props) {
     if (!selected || !projectName.trim() || !outputFolder) return
     setLines([])
     setRunState('running')
-
     const name = projectName.trim().toLowerCase().replace(/\s+/g, '-')
     const cmd = selected.command(name, options)
     const code = await window.api.quickstart.run(outputFolder, cmd)
-
     if (code === 0 && selected.postInstall) {
       const post = selected.postInstall(name, options)
       if (post) {
@@ -245,16 +278,55 @@ export default function QuickStart({ onBack, shortcut }: Props) {
     }
   }
 
-  const stop = () => {
-    window.api.quickstart.kill()
-    setRunState('idle')
-  }
+  const stop = () => { window.api.quickstart.kill(); setRunState('idle') }
 
   const openProject = () => {
     if (outputFolder && projectName) {
       const name = projectName.trim().toLowerCase().replace(/\s+/g, '-')
       window.api.openFolder(`${outputFolder}\\${name}`)
     }
+  }
+
+  const openNewTemplate = () => { setEditingTemplate(null); setView('editor') }
+
+  const openEditTemplate = (ct: CustomTemplate) => { setEditingTemplate(ct); setView('editor') }
+
+  const handleSaveTemplate = (ct: CustomTemplate) => {
+    setCustomTemplates(prev => {
+      const idx = prev.findIndex(t => t.id === ct.id)
+      if (idx >= 0) { const next = [...prev]; next[idx] = ct; return next }
+      return [...prev, ct]
+    })
+    setCategory(ct.category)
+    selectTemplate(customToTemplate(ct))
+  }
+
+  const handleDeleteTemplate = (id: string) => {
+    setCustomTemplates(prev => prev.filter(t => t.id !== id))
+    if (selected?.id === id) { setSelected(null); setView('run') }
+  }
+
+  const handleImport = async () => {
+    const result = await window.api.quickstart.importTemplates()
+    if (!result) return
+    let templates: CustomTemplate[]
+    if (Array.isArray(result)) {
+      templates = result
+    } else if ((result as { templates?: unknown }).templates && Array.isArray((result as { templates: unknown }).templates)) {
+      templates = (result as { templates: CustomTemplate[] }).templates
+    } else return
+    const valid = templates.filter(t => t.id && t.name && t.category && t.commandTemplate)
+    if (!valid.length) return
+    setCustomTemplates(prev => {
+      const existingIds = new Set(prev.map(t => t.id))
+      const fresh = valid.filter(t => !existingIds.has(t.id))
+      return [...prev, ...fresh]
+    })
+  }
+
+  const handleExport = () => {
+    if (!customTemplates.length) return
+    window.api.quickstart.exportTemplates(customTemplates)
   }
 
   const canRun = selected && projectName.trim() && outputFolder && runState !== 'running'
@@ -267,11 +339,11 @@ export default function QuickStart({ onBack, shortcut }: Props) {
         className="flex flex-1 overflow-hidden"
         style={{ paddingTop: 'calc(var(--titlebar-height) + var(--navbar-height))' }}
       >
-        {/* ── Seletor de templates (esquerda) ── */}
-        <div className="w-64 min-w-64 flex flex-col border-r border-border bg-card overflow-y-auto">
+        {/* ── Sidebar ── */}
+        <div className="w-64 min-w-64 flex flex-col border-r border-border bg-card">
           {/* Categorias */}
-          <div className="p-3 space-y-0.5">
-            {CATEGORIES.map(cat => (
+          <div className="p-3 space-y-0.5 shrink-0">
+            {allCategories.map(cat => (
               <button
                 key={cat}
                 onClick={() => setCategory(cat)}
@@ -287,11 +359,12 @@ export default function QuickStart({ onBack, shortcut }: Props) {
             ))}
           </div>
 
-          <div className="h-px bg-border mx-3" />
+          <div className="h-px bg-border mx-3 shrink-0" />
 
-          {/* Templates da categoria */}
-          <div className="p-2 space-y-1 flex-1">
-            {TEMPLATES.filter(t => t.category === category).map(t => (
+          {/* Templates */}
+          <div className="p-2 space-y-1 flex-1 overflow-y-auto">
+            {/* Built-in */}
+            {builtinInCategory.map(t => (
               <button
                 key={t.id}
                 onClick={() => selectTemplate(t)}
@@ -312,23 +385,113 @@ export default function QuickStart({ onBack, shortcut }: Props) {
                 {selected?.id === t.id && <ChevronRight className="size-3.5 text-primary ml-auto shrink-0" />}
               </button>
             ))}
+
+            {/* Custom */}
+            {customInCategory.map(ct => (
+              <div key={ct.id} className="group relative">
+                <button
+                  onClick={() => selectTemplate(customToTemplate(ct))}
+                  className={cn(
+                    'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all pr-16',
+                    selected?.id === ct.id
+                      ? 'bg-primary/10 border border-primary/30'
+                      : 'hover:bg-accent border border-transparent'
+                  )}
+                >
+                  <span className={cn('flex items-center justify-center size-8 rounded-md text-base shrink-0', ct.color, ct.textColor)}>
+                    {ct.icon}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{ct.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">{ct.description}</p>
+                  </div>
+                </button>
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 hidden group-hover:flex gap-0.5">
+                  <button
+                    onClick={e => { e.stopPropagation(); openEditTemplate(ct) }}
+                    className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                    title="Editar"
+                  >
+                    <Pencil className="size-3" />
+                  </button>
+                  <button
+                    onClick={e => { e.stopPropagation(); handleDeleteTemplate(ct.id) }}
+                    className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-destructive transition-colors"
+                    title="Excluir"
+                  >
+                    <Trash2 className="size-3" />
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {builtinInCategory.length === 0 && customInCategory.length === 0 && (
+              <p className="text-xs text-muted-foreground/40 px-3 py-2">Nenhum template nesta categoria</p>
+            )}
+          </div>
+
+          <div className="h-px bg-border mx-3 shrink-0" />
+
+          {/* Ações */}
+          <div className="p-3 space-y-1 shrink-0">
+            <button
+              onClick={openNewTemplate}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+            >
+              <Plus className="size-3.5" /> Novo template
+            </button>
+            <div className="flex gap-1">
+              <button
+                onClick={handleImport}
+                className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                title="Importar templates de um arquivo JSON"
+              >
+                <Upload className="size-3" /> Importar
+              </button>
+              <button
+                onClick={handleExport}
+                disabled={customTemplates.length === 0}
+                className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Exportar templates customizados como JSON"
+              >
+                <Download className="size-3" /> Exportar
+              </button>
+            </div>
           </div>
         </div>
 
         {/* ── Painel direito ── */}
         <div className="flex-1 flex flex-col overflow-hidden">
-          {!selected ? (
+          {view === 'editor' ? (
+            <TemplateEditor
+              template={editingTemplate}
+              allCategories={allCategories}
+              onSave={handleSaveTemplate}
+              onCancel={() => setView('run')}
+            />
+          ) : !selected ? (
             <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
               <Terminal className="size-10 opacity-20" />
               <p className="text-sm">Selecione um template para começar</p>
+              <p className="text-xs text-muted-foreground/40">ou crie um template personalizado</p>
             </div>
           ) : (
             <>
               {/* Config */}
               <div className="p-6 border-b border-border space-y-4 shrink-0">
-                <div>
-                  <h2 className="text-base font-semibold text-foreground">{selected.name}</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">{selected.description}</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-base font-semibold text-foreground">{selected.name}</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">{selected.description}</p>
+                  </div>
+                  {customTemplates.some(ct => ct.id === selected.id) && (
+                    <button
+                      onClick={() => openEditTemplate(customTemplates.find(ct => ct.id === selected.id)!)}
+                      className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors border border-border"
+                    >
+                      <Pencil className="size-3" /> Editar
+                    </button>
+                  )}
                 </div>
 
                 {/* Nome + pasta */}
@@ -397,19 +560,16 @@ export default function QuickStart({ onBack, shortcut }: Props) {
                 <div className="flex gap-2">
                   {runState !== 'running' ? (
                     <Button onClick={run} disabled={!canRun} className="gap-2">
-                      <Play className="size-3.5" />
-                      Criar projeto
+                      <Play className="size-3.5" /> Criar projeto
                     </Button>
                   ) : (
                     <Button variant="destructive" onClick={stop} className="gap-2">
-                      <Square className="size-3.5" />
-                      Parar
+                      <Square className="size-3.5" /> Parar
                     </Button>
                   )}
                   {runState === 'done' && (
                     <Button variant="secondary" onClick={openProject} className="gap-2">
-                      <FolderOpenIcon className="size-3.5" />
-                      Abrir pasta
+                      <FolderOpenIcon className="size-3.5" /> Abrir pasta
                     </Button>
                   )}
                   {runState === 'done' && (
