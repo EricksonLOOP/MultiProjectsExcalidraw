@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { PenLine, Plus, Globe, Trash2, X, Zap } from 'lucide-react'
+import { PenLine, Plus, Globe, Trash2, X, Zap, Code2, FileText, Wrench, GitBranch, Network } from 'lucide-react'
 
 function FaviconIcon({ url, className }: { url: string; className?: string }) {
   const [failed, setFailed] = useState(false)
@@ -21,53 +21,107 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 
-const DEFAULT_INTEGRATIONS: WebIntegration[] = [
-  {
-    id: 'spotify',
-    name: 'Spotify',
-    url: 'https://open.spotify.com',
-    description: 'Música enquanto trabalha',
-    color: '',
-  }
-]
+type HubColor = 'green' | 'yellow' | 'blue' | 'purple' | 'orange' | 'pink' | 'red'
+
+const COLOR_MAP: Record<HubColor, { border: string; hover: string; bg: string; iconBorder: string }> = {
+  green:  { border: 'border-primary/30',    hover: 'hover:border-primary hover:shadow-primary/10',      bg: 'bg-primary/10',    iconBorder: 'border-primary/20' },
+  yellow: { border: 'border-yellow-500/20', hover: 'hover:border-yellow-500/50 hover:shadow-yellow-500/10', bg: 'bg-yellow-500/10', iconBorder: 'border-yellow-500/20' },
+  blue:   { border: 'border-blue-500/20',   hover: 'hover:border-blue-500/50 hover:shadow-blue-500/10',  bg: 'bg-blue-500/10',   iconBorder: 'border-blue-500/20' },
+  purple: { border: 'border-purple-500/20', hover: 'hover:border-purple-500/50 hover:shadow-purple-500/10', bg: 'bg-purple-500/10', iconBorder: 'border-purple-500/20' },
+  orange: { border: 'border-orange-500/20', hover: 'hover:border-orange-500/50 hover:shadow-orange-500/10', bg: 'bg-orange-500/10', iconBorder: 'border-orange-500/20' },
+  pink:   { border: 'border-pink-500/20',   hover: 'hover:border-pink-500/50 hover:shadow-pink-500/10',  bg: 'bg-pink-500/10',   iconBorder: 'border-pink-500/20' },
+  red:    { border: 'border-red-500/20',    hover: 'hover:border-red-500/50 hover:shadow-red-500/10',    bg: 'bg-red-500/10',    iconBorder: 'border-red-500/20' },
+}
+
+function HubCard({ onClick, shortcut, color, icon, title, description }: {
+  onClick: () => void
+  shortcut: string
+  color: HubColor
+  icon: React.ReactNode
+  title: string
+  description: string
+}) {
+  const c = COLOR_MAP[color]
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'group relative flex flex-col gap-3 p-5 rounded-xl border text-left transition-all duration-200',
+        'bg-card hover:shadow-lg hover:scale-[1.02]',
+        c.border, c.hover
+      )}
+    >
+      <span className="absolute top-2 right-2 text-[10px] font-mono text-muted-foreground bg-secondary px-1.5 py-0.5 rounded border border-border opacity-0 group-hover:opacity-100 transition-opacity">
+        {shortcut}
+      </span>
+      <div className={cn('flex items-center justify-center size-11 rounded-lg border', c.bg, c.iconBorder)}>
+        {icon}
+      </div>
+      <div>
+        <p className="font-semibold text-sm text-foreground">{title}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
+      </div>
+    </button>
+  )
+}
 
 interface Props {
+  workspaceId: string
   onOpenExcalidraw: () => void
   onOpenWeb: (integration: WebIntegration) => void
   onOpenQuickStart: () => void
+  onOpenSnippets: () => void
+  onOpenToolkit: () => void
+  onOpenNotes: () => void
+  onOpenPorts: () => void
+  onOpenGit: () => void
   openWebPanelIds: string[]
 }
 
-export default function Dashboard({ onOpenExcalidraw, onOpenWeb, onOpenQuickStart, openWebPanelIds }: Props) {
+export default function Dashboard({ workspaceId, onOpenExcalidraw, onOpenWeb, onOpenQuickStart, onOpenSnippets, onOpenToolkit, onOpenNotes, onOpenPorts, onOpenGit, openWebPanelIds }: Props) {
   const [integrations, setIntegrations] = useState<WebIntegration[]>([])
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState({ name: '', url: '' })
   const [error, setError] = useState('')
 
-  // Carrega do DB (com migração automática do localStorage)
   useEffect(() => {
-    window.api.db.getIntegrations().then(async dbInts => {
+    setIntegrations([])
+    window.api.db.getIntegrations(workspaceId).then(async dbInts => {
       if (dbInts.length > 0) {
         setIntegrations(dbInts)
-      } else {
-        // Primeira execução: migra do localStorage ou usa defaults
-        let source: WebIntegration[] = DEFAULT_INTEGRATIONS
+      } else if (workspaceId === 'default') {
+        // Primeira execução do workspace padrão: migra do localStorage
         try {
           const legacy = localStorage.getItem('hub-web-integrations')
-          if (legacy) source = JSON.parse(legacy)
+          if (legacy) {
+            const parsed: WebIntegration[] = JSON.parse(legacy)
+            const withWs = parsed.map(i => ({ ...i, workspaceId }))
+            for (const i of withWs) await window.api.db.upsertIntegration(i)
+            setIntegrations(withWs)
+            return
+          }
         } catch { /* usa defaults */ }
-        for (const i of source) await window.api.db.upsertIntegration(i)
-        setIntegrations(source)
+        // Default: Spotify para o workspace padrão
+        const spotify: WebIntegration = {
+          id: crypto.randomUUID(),
+          name: 'Spotify',
+          url: 'https://open.spotify.com',
+          description: 'Música enquanto trabalha',
+          color: '',
+          workspaceId,
+        }
+        await window.api.db.upsertIntegration(spotify)
+        setIntegrations([spotify])
       }
     })
-  }, [])
+  }, [workspaceId])
 
   const handleAdd = () => {
     const name = form.name.trim()
     let url = form.url.trim()
     if (!name || !url) { setError('Preencha nome e URL.'); return }
     if (!url.startsWith('http')) url = 'https://' + url
-    const item: WebIntegration = { id: crypto.randomUUID(), name, url, description: url, color: '' }
+    const item: WebIntegration = { id: crypto.randomUUID(), name, url, description: url, color: '', workspaceId }
     window.api.db.upsertIntegration(item)
     setIntegrations(prev => [...prev, item])
     setForm({ name: '', url: '' })
@@ -101,46 +155,25 @@ export default function Dashboard({ onOpenExcalidraw, onOpenWeb, onOpenQuickStar
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
 
           {/* Quick Start */}
-          <button
-            onClick={onOpenQuickStart}
-            className={cn(
-              'group relative flex flex-col gap-3 p-5 rounded-xl border text-left transition-all duration-200',
-              'bg-card border-yellow-500/20',
-              'hover:border-yellow-500/50 hover:shadow-lg hover:shadow-yellow-500/10 hover:scale-[1.02]'
-            )}
-          >
-            <span className="absolute top-2 right-2 text-[10px] font-mono text-muted-foreground bg-secondary px-1.5 py-0.5 rounded border border-border">
-              Ctrl+Q
-            </span>
-            <div className="flex items-center justify-center size-11 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-              <Zap className="size-5 text-yellow-400" />
-            </div>
-            <div>
-              <p className="font-semibold text-sm text-foreground">Quick Start</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Scaffolding de projetos</p>
-            </div>
-          </button>
+          <HubCard onClick={onOpenQuickStart} shortcut="Ctrl+Q" color="yellow" icon={<Zap className="size-5 text-yellow-400" />} title="Quick Start" description="Scaffolding de projetos" />
 
-          {/* Excalidraw — card primário com verde */}
-          <button
-            onClick={onOpenExcalidraw}
-            className={cn(
-              'group relative flex flex-col gap-3 p-5 rounded-xl border text-left transition-all duration-200',
-              'bg-card border-primary/30',
-              'hover:border-primary hover:shadow-lg hover:shadow-primary/10 hover:scale-[1.02]'
-            )}
-          >
-            <span className="absolute top-2 right-2 text-[10px] font-mono text-muted-foreground bg-secondary px-1.5 py-0.5 rounded border border-border">
-              Ctrl+1
-            </span>
-            <div className="flex items-center justify-center size-11 rounded-lg bg-primary/10 border border-primary/20">
-              <PenLine className="size-5 text-primary" />
-            </div>
-            <div>
-              <p className="font-semibold text-sm text-foreground">Excalidraw</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Diagramas e rascunhos</p>
-            </div>
-          </button>
+          {/* Excalidraw */}
+          <HubCard onClick={onOpenExcalidraw} shortcut="Ctrl+1" color="green" icon={<PenLine className="size-5 text-primary" />} title="Excalidraw" description="Diagramas e rascunhos" />
+
+          {/* Snippets */}
+          <HubCard onClick={onOpenSnippets} shortcut="Ctrl+S" color="blue" icon={<Code2 className="size-5 text-blue-400" />} title="Snippets" description="Trechos de código" />
+
+          {/* Notas */}
+          <HubCard onClick={onOpenNotes} shortcut="Ctrl+N" color="purple" icon={<FileText className="size-5 text-purple-400" />} title="Notas" description="Notas em Markdown" />
+
+          {/* Dev Toolkit */}
+          <HubCard onClick={onOpenToolkit} shortcut="Ctrl+T" color="orange" icon={<Wrench className="size-5 text-orange-400" />} title="Dev Toolkit" description="JSON, Base64, UUID, Hash" />
+
+          {/* Git Repos */}
+          <HubCard onClick={onOpenGit} shortcut="Ctrl+G" color="pink" icon={<GitBranch className="size-5 text-pink-400" />} title="Git Repos" description="Repositórios locais" />
+
+          {/* Port Manager */}
+          <HubCard onClick={onOpenPorts} shortcut="Ctrl+P" color="red" icon={<Network className="size-5 text-red-400" />} title="Port Manager" description="Portas em uso" />
 
           {/* Integrações web */}
           {integrations.map((integration, index) => {

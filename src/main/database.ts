@@ -6,12 +6,20 @@ let db: Database.Database
 
 // ── Types (espelham os tipos do renderer) ────────────────────────────────────
 
+export interface DbWorkspace {
+  id: string
+  name: string
+  color: string
+  createdAt: number
+}
+
 export interface DbWebIntegration {
   id: string
   name: string
   url: string
   description: string
   color: string
+  workspaceId: string
 }
 
 export interface DbTemplateOption {
@@ -49,13 +57,21 @@ export function initDatabase(): void {
       value TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS workspaces (
+      id         TEXT PRIMARY KEY,
+      name       TEXT NOT NULL,
+      color      TEXT NOT NULL DEFAULT 'slate',
+      created_at INTEGER NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS web_integrations (
-      id          TEXT PRIMARY KEY,
-      name        TEXT NOT NULL,
-      url         TEXT NOT NULL,
-      description TEXT NOT NULL DEFAULT '',
-      color       TEXT NOT NULL DEFAULT '',
-      position    INTEGER NOT NULL DEFAULT 0
+      id           TEXT PRIMARY KEY,
+      name         TEXT NOT NULL,
+      url          TEXT NOT NULL,
+      description  TEXT NOT NULL DEFAULT '',
+      color        TEXT NOT NULL DEFAULT '',
+      workspace_id TEXT NOT NULL DEFAULT 'default',
+      position     INTEGER NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS quickstart_templates (
@@ -71,7 +87,37 @@ export function initDatabase(): void {
       options               TEXT NOT NULL DEFAULT '[]',
       created_at            INTEGER NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS snippets (
+      id           TEXT PRIMARY KEY,
+      title        TEXT NOT NULL,
+      language     TEXT NOT NULL DEFAULT 'text',
+      code         TEXT NOT NULL DEFAULT '',
+      tags         TEXT NOT NULL DEFAULT '[]',
+      workspace_id TEXT NOT NULL DEFAULT 'default',
+      created_at   INTEGER NOT NULL,
+      updated_at   INTEGER NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS notes (
+      id           TEXT PRIMARY KEY,
+      title        TEXT NOT NULL,
+      content      TEXT NOT NULL DEFAULT '',
+      workspace_id TEXT NOT NULL DEFAULT 'default',
+      created_at   INTEGER NOT NULL,
+      updated_at   INTEGER NOT NULL
+    );
   `)
+
+  // Migrations: add workspace_id to existing tables (safe - ignored if column already exists)
+  const tryAlter = (sql: string) => { try { db.exec(sql) } catch { /* column already exists */ } }
+  tryAlter(`ALTER TABLE snippets ADD COLUMN workspace_id TEXT NOT NULL DEFAULT 'default'`)
+  tryAlter(`ALTER TABLE notes ADD COLUMN workspace_id TEXT NOT NULL DEFAULT 'default'`)
+  tryAlter(`ALTER TABLE web_integrations ADD COLUMN workspace_id TEXT NOT NULL DEFAULT 'default'`)
+
+  // Ensure default workspace always exists
+  db.prepare(`INSERT OR IGNORE INTO workspaces (id, name, color, created_at) VALUES ('default', 'Geral', 'slate', ?)`)
+    .run(Date.now())
 }
 
 // ── Settings ──────────────────────────────────────────────────────────────────
@@ -85,22 +131,50 @@ export function setSetting(key: string, value: string): void {
   db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)').run(key, value)
 }
 
+// ── Workspaces ────────────────────────────────────────────────────────────────
+
+export function getWorkspaces(): DbWorkspace[] {
+  type Row = { id: string; name: string; color: string; created_at: number }
+  const rows = db.prepare('SELECT * FROM workspaces ORDER BY created_at ASC').all() as Row[]
+  return rows.map(r => ({ id: r.id, name: r.name, color: r.color, createdAt: r.created_at }))
+}
+
+export function upsertWorkspace(w: DbWorkspace): void {
+  db.prepare(`
+    INSERT INTO workspaces (id, name, color, created_at)
+    VALUES (@id, @name, @color, @createdAt)
+    ON CONFLICT(id) DO UPDATE SET name = excluded.name, color = excluded.color
+  `).run(w)
+}
+
+export function deleteWorkspace(id: string): void {
+  const txn = db.transaction(() => {
+    db.prepare('DELETE FROM snippets WHERE workspace_id = ?').run(id)
+    db.prepare('DELETE FROM notes WHERE workspace_id = ?').run(id)
+    db.prepare('DELETE FROM web_integrations WHERE workspace_id = ?').run(id)
+    db.prepare('DELETE FROM settings WHERE key = ?').run(`excalidraw-folder:${id}`)
+    db.prepare('DELETE FROM workspaces WHERE id = ?').run(id)
+  })
+  txn()
+}
+
 // ── Web Integrations ──────────────────────────────────────────────────────────
 
-export function getIntegrations(): DbWebIntegration[] {
-  type Row = { id: string; name: string; url: string; description: string; color: string }
-  return db
-    .prepare('SELECT id, name, url, description, color FROM web_integrations ORDER BY position ASC')
-    .all() as Row[]
+export function getIntegrations(workspaceId: string): DbWebIntegration[] {
+  type Row = { id: string; name: string; url: string; description: string; color: string; workspace_id: string }
+  return (db
+    .prepare('SELECT id, name, url, description, color, workspace_id FROM web_integrations WHERE workspace_id = ? ORDER BY position ASC')
+    .all(workspaceId) as Row[])
+    .map(r => ({ ...r, workspaceId: r.workspace_id }))
 }
 
 export function upsertIntegration(i: DbWebIntegration): void {
   const { p } = db
-    .prepare('SELECT COALESCE(MAX(position), -1) AS p FROM web_integrations')
-    .get() as { p: number }
+    .prepare('SELECT COALESCE(MAX(position), -1) AS p FROM web_integrations WHERE workspace_id = ?')
+    .get(i.workspaceId) as { p: number }
   db.prepare(`
-    INSERT INTO web_integrations (id, name, url, description, color, position)
-    VALUES (@id, @name, @url, @description, @color, @position)
+    INSERT INTO web_integrations (id, name, url, description, color, workspace_id, position)
+    VALUES (@id, @name, @url, @description, @color, @workspaceId, @position)
     ON CONFLICT(id) DO UPDATE SET
       name        = excluded.name,
       url         = excluded.url,
@@ -167,4 +241,76 @@ export function upsertTemplate(t: DbTemplate): void {
 
 export function deleteTemplate(id: string): void {
   db.prepare('DELETE FROM quickstart_templates WHERE id = ?').run(id)
+}
+
+// ── Snippets ──────────────────────────────────────────────────────────────────
+
+export interface DbSnippet {
+  id: string
+  title: string
+  language: string
+  code: string
+  tags: string[]
+  workspaceId: string
+  createdAt: number
+  updatedAt: number
+}
+
+export function getSnippets(workspaceId: string): DbSnippet[] {
+  type Row = { id: string; title: string; language: string; code: string; tags: string; workspace_id: string; created_at: number; updated_at: number }
+  const rows = db.prepare('SELECT * FROM snippets WHERE workspace_id = ? ORDER BY updated_at DESC').all(workspaceId) as Row[]
+  return rows.map(r => ({
+    id: r.id, title: r.title, language: r.language, code: r.code,
+    tags: JSON.parse(r.tags) as string[],
+    workspaceId: r.workspace_id,
+    createdAt: r.created_at, updatedAt: r.updated_at,
+  }))
+}
+
+export function upsertSnippet(s: DbSnippet): void {
+  db.prepare(`
+    INSERT INTO snippets (id, title, language, code, tags, workspace_id, created_at, updated_at)
+    VALUES (@id, @title, @language, @code, @tags, @workspaceId, @createdAt, @updatedAt)
+    ON CONFLICT(id) DO UPDATE SET
+      title = excluded.title, language = excluded.language,
+      code = excluded.code, tags = excluded.tags, updated_at = excluded.updated_at
+  `).run({ ...s, tags: JSON.stringify(s.tags) })
+}
+
+export function deleteSnippet(id: string): void {
+  db.prepare('DELETE FROM snippets WHERE id = ?').run(id)
+}
+
+// ── Notes ─────────────────────────────────────────────────────────────────────
+
+export interface DbNote {
+  id: string
+  title: string
+  content: string
+  workspaceId: string
+  createdAt: number
+  updatedAt: number
+}
+
+export function getNotes(workspaceId: string): DbNote[] {
+  type Row = { id: string; title: string; content: string; workspace_id: string; created_at: number; updated_at: number }
+  const rows = db.prepare('SELECT * FROM notes WHERE workspace_id = ? ORDER BY updated_at DESC').all(workspaceId) as Row[]
+  return rows.map(r => ({
+    id: r.id, title: r.title, content: r.content,
+    workspaceId: r.workspace_id,
+    createdAt: r.created_at, updatedAt: r.updated_at,
+  }))
+}
+
+export function upsertNote(n: DbNote): void {
+  db.prepare(`
+    INSERT INTO notes (id, title, content, workspace_id, created_at, updated_at)
+    VALUES (@id, @title, @content, @workspaceId, @createdAt, @updatedAt)
+    ON CONFLICT(id) DO UPDATE SET
+      title = excluded.title, content = excluded.content, updated_at = excluded.updated_at
+  `).run(n)
+}
+
+export function deleteNote(id: string): void {
+  db.prepare('DELETE FROM notes WHERE id = ?').run(id)
 }
