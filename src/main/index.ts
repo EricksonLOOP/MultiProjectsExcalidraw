@@ -2,6 +2,8 @@ import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import fs from 'fs'
+import { spawn } from 'child_process'
+import type { ChildProcess } from 'child_process'
 
 function getIconPath(): string {
   const names = ['icon.png', 'icon.ico']
@@ -79,6 +81,8 @@ app.on('window-all-closed', () => {
 
 // --- IPC Handlers ---
 
+let activeProcess: ChildProcess | null = null
+
 function registerIpcHandlers(): void {
   // Escolher pasta de projetos
   ipcMain.handle('dialog:selectFolder', async () => {
@@ -155,5 +159,47 @@ function registerIpcHandlers(): void {
   // Abrir pasta no Explorer
   ipcMain.handle('shell:openFolder', async (_event, folderPath: string) => {
     shell.openPath(folderPath)
+  })
+
+  // Quick Start: rodar comando com output em tempo real
+  ipcMain.handle('quickstart:run', (event, { cwd, command }: { cwd: string; command: string }) => {
+    return new Promise<number>((resolve) => {
+      if (activeProcess) { activeProcess.kill(); activeProcess = null }
+
+      const proc = spawn(command, { cwd, shell: true, stdio: 'pipe' })
+      activeProcess = proc
+
+      const send = (type: 'stdout' | 'stderr' | 'info', data: string) => {
+        event.sender.send('quickstart:output', { type, data })
+      }
+
+      send('info', `$ ${command}\n`)
+      proc.stdout?.on('data', (d) => send('stdout', d.toString()))
+      proc.stderr?.on('data', (d) => send('stderr', d.toString()))
+
+      proc.on('close', (code) => {
+        activeProcess = null
+        event.sender.send('quickstart:exit', code ?? 0)
+        resolve(code ?? 0)
+      })
+      proc.on('error', (err) => {
+        send('stderr', `\nErro: ${err.message}\n`)
+        event.sender.send('quickstart:exit', 1)
+        activeProcess = null
+        resolve(1)
+      })
+    })
+  })
+
+  ipcMain.handle('quickstart:kill', () => {
+    if (activeProcess) { activeProcess.kill(); activeProcess = null }
+  })
+
+  ipcMain.handle('quickstart:selectFolder', async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ['openDirectory', 'createDirectory'],
+      title: 'Onde criar o projeto?'
+    })
+    return result.canceled ? null : result.filePaths[0]
   })
 }

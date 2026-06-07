@@ -1,5 +1,7 @@
 /// <reference types="vite/client" />
 
+interface QuickstartOutput { type: 'stdout' | 'stderr' | 'info'; data: string }
+
 interface Window {
   api: {
     selectFolder: () => Promise<string | null>
@@ -10,6 +12,13 @@ interface Window {
     renameProject: (oldPath: string, folderPath: string, newName: string) => Promise<{ path?: string; error?: string }>
     deleteProject: (filePath: string) => Promise<boolean>
     openFolder: (folderPath: string) => Promise<void>
+    quickstart: {
+      run: (cwd: string, command: string) => Promise<number>
+      kill: () => Promise<void>
+      selectFolder: () => Promise<string | null>
+      onOutput: (cb: (data: QuickstartOutput) => void) => () => void
+      onExit: (cb: (code: number) => void) => () => void
+    }
   }
 }
 

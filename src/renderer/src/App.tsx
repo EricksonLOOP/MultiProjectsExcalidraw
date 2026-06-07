@@ -6,6 +6,7 @@ import NavBar from './components/NavBar'
 import Sidebar from './components/Sidebar'
 import Canvas from './components/Canvas'
 import WebPanel from './components/WebPanel'
+import QuickStart from './components/QuickStart'
 
 const FOLDER_KEY = 'devson-excalidraw-folder'
 
@@ -51,6 +52,7 @@ export default function App() {
 
       if (key === HUB_KEY) { e.preventDefault(); setActivePanel('home'); return }
       if (key === EXCALIDRAW_KEY) { e.preventDefault(); setActivePanel('excalidraw'); return }
+      if (key === 'q') { e.preventDefault(); setActivePanel('quickstart'); return }
       if (webKeys[key]) { e.preventDefault(); setActivePanel(webKeys[key]); return }
     }
 
@@ -118,6 +120,7 @@ export default function App() {
         <Dashboard
           onOpenExcalidraw={handleOpenExcalidraw}
           onOpenWeb={handleOpenWeb}
+          onOpenQuickStart={() => setActivePanel('quickstart')}
           openWebPanelIds={openWebPanels.map(p => p.id)}
         />
       </div>
@@ -164,6 +167,14 @@ export default function App() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* ── Quick Start ── */}
+      <div
+        className="absolute inset-0 flex flex-col"
+        style={{ display: activePanel === 'quickstart' ? 'flex' : 'none' }}
+      >
+        <QuickStart onBack={() => setActivePanel('home')} shortcut="Ctrl+Q" />
       </div>
 
       {/* ── Painéis Web (sempre montados, ocultos via visibility) ── */}

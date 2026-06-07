@@ -9,5 +9,21 @@ contextBridge.exposeInMainWorld('api', {
   renameProject: (oldPath: string, folderPath: string, newName: string) =>
     ipcRenderer.invoke('projects:rename', oldPath, folderPath, newName),
   deleteProject: (filePath: string) => ipcRenderer.invoke('projects:delete', filePath),
-  openFolder: (folderPath: string) => ipcRenderer.invoke('shell:openFolder', folderPath)
+  openFolder: (folderPath: string) => ipcRenderer.invoke('shell:openFolder', folderPath),
+
+  quickstart: {
+    run: (cwd: string, command: string) => ipcRenderer.invoke('quickstart:run', { cwd, command }),
+    kill: () => ipcRenderer.invoke('quickstart:kill'),
+    selectFolder: () => ipcRenderer.invoke('quickstart:selectFolder'),
+    onOutput: (cb: (data: { type: 'stdout' | 'stderr' | 'info'; data: string }) => void) => {
+      const handler = (_: Electron.IpcRendererEvent, data: { type: 'stdout' | 'stderr' | 'info'; data: string }) => cb(data)
+      ipcRenderer.on('quickstart:output', handler)
+      return () => ipcRenderer.removeListener('quickstart:output', handler)
+    },
+    onExit: (cb: (code: number) => void) => {
+      const handler = (_: Electron.IpcRendererEvent, code: number) => cb(code)
+      ipcRenderer.on('quickstart:exit', handler)
+      return () => ipcRenderer.removeListener('quickstart:exit', handler)
+    }
+  }
 })

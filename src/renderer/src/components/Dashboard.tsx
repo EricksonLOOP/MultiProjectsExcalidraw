@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { PenLine, Plus, Globe, Trash2, X } from 'lucide-react'
+import { PenLine, Plus, Globe, Trash2, X, Zap } from 'lucide-react'
 
 function FaviconIcon({ url, className }: { url: string; className?: string }) {
   const [failed, setFailed] = useState(false)
@@ -49,10 +49,11 @@ function saveIntegrations(integrations: WebIntegration[]) {
 interface Props {
   onOpenExcalidraw: () => void
   onOpenWeb: (integration: WebIntegration) => void
+  onOpenQuickStart: () => void
   openWebPanelIds: string[]
 }
 
-export default function Dashboard({ onOpenExcalidraw, onOpenWeb, openWebPanelIds }: Props) {
+export default function Dashboard({ onOpenExcalidraw, onOpenWeb, onOpenQuickStart, openWebPanelIds }: Props) {
   const [integrations, setIntegrations] = useState<WebIntegration[]>(loadIntegrations)
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState({ name: '', url: '' })
@@ -96,6 +97,27 @@ export default function Dashboard({ onOpenExcalidraw, onOpenWeb, openWebPanelIds
 
         {/* Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+
+          {/* Quick Start */}
+          <button
+            onClick={onOpenQuickStart}
+            className={cn(
+              'group relative flex flex-col gap-3 p-5 rounded-xl border text-left transition-all duration-200',
+              'bg-card border-yellow-500/20',
+              'hover:border-yellow-500/50 hover:shadow-lg hover:shadow-yellow-500/10 hover:scale-[1.02]'
+            )}
+          >
+            <span className="absolute top-2 right-2 text-[10px] font-mono text-muted-foreground bg-secondary px-1.5 py-0.5 rounded border border-border">
+              Ctrl+Q
+            </span>
+            <div className="flex items-center justify-center size-11 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+              <Zap className="size-5 text-yellow-400" />
+            </div>
+            <div>
+              <p className="font-semibold text-sm text-foreground">Quick Start</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Scaffolding de projetos</p>
+            </div>
+          </button>
 
           {/* Excalidraw — card primário com verde */}
           <button
